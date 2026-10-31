@@ -1,7 +1,16 @@
 --[[
-    FUST Survival — FUST_FIXED V6 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V7 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V6 — сортировка меню + сохранение конфигов:
+    НОВОЕ В V7 — нормальное меню слева + две колонки:
+    • Слева настоящее меню из страниц: Main, Аимбот, Settings.
+    • Внутри страницы контент раскладывается в ДВЕ колонки
+      (Side = 1 — левая, Side = 2 — правая), а не в один столбик:
+      Main:     ESP          | Визуалы
+      Аимбот:   Аимбот       | Хитбокс + Цель (парт/приоритет)
+      Settings: Вайтлист     | Конфиги
+    • Ни одна функция не удалена — всё только переехало по колонкам.
+
+    БЫЛО В V6 — сортировка меню + сохранение конфигов:
     • Секции в одном столбце по порядку: ESP → Визуалы → Аимбот → Настройки.
     • Хитбокс переехал в «Аимбот», вайтлист и конфиги — в «Настройки».
     • Кнопки «Сохранить конфиг» / «Загрузить конфиг»: сохраняется ВСЁ —
@@ -86,35 +95,75 @@ local MainPage = Window:Page({
     Icon = "rbxassetid://102973834692853"
 })
 
-local SettingsSubPage = MainPage:SubPage({
-    Name = "Settings",
-    Description = "Полный функционал читов",
+local EspSubPage = MainPage:SubPage({
+    Name = "ESP",
+    Description = "Подсветка игроков и окружение",
     Icon = "rbxassetid://102973834692853"
 })
 
--- V6: один столбец, порядок секций: ESP -> Визуалы -> Аимбот -> Настройки
-local EspSection = SettingsSubPage:Section({
+local AimPage = Window:Page({
+    Name = "Аимбот",
+    Icon = "rbxassetid://102973834692853"
+})
+
+local AimSubPage = AimPage:SubPage({
+    Name = "Аимбот",
+    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
+    Icon = "rbxassetid://102973834692853"
+})
+
+local SettingsPage = Window:Page({
+    Name = "Settings",
+    Icon = "rbxassetid://118813823415057"
+})
+
+local SettingsSubPage = SettingsPage:SubPage({
+    Name = "Настройки",
+    Description = "Вайтлист и конфиги",
+    Icon = "rbxassetid://74595432438103"
+})
+
+-- V7: колонки внутри страницы: Side = 1 — левая, Side = 2 — правая
+local EspSection = EspSubPage:Section({
     Name = "ESP",
     Description = "Функции ESP",
     Side = 1
 })
 
-local VisualSection = SettingsSubPage:Section({
+local VisualSection = EspSubPage:Section({
     Name = "Визуалы",
     Description = "Освещение и окружение",
+    Side = 2
+})
+
+local AimSection = AimSubPage:Section({
+    Name = "Аимбот",
+    Description = "Прицел, упреждение, проверки",
     Side = 1
 })
 
-local AimSection = SettingsSubPage:Section({
-    Name = "Аимбот",
-    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
-    Side = 1
+local HitboxSection = AimSubPage:Section({
+    Name = "Хитбокс",
+    Description = "Расширение хитбоксов игроков",
+    Side = 2
+})
+
+local TargetSection = AimSubPage:Section({
+    Name = "Цель",
+    Description = "Куда целиться и кого выбирать",
+    Side = 2
 })
 
 local MiscSection = SettingsSubPage:Section({
-    Name = "Настройки",
-    Description = "Конфиги и вайтлист",
+    Name = "Вайтлист",
+    Description = "По этим игрокам не бьём",
     Side = 1
+})
+
+local ConfigSection = SettingsSubPage:Section({
+    Name = "Конфиги",
+    Description = "Сохранение всех настроек",
+    Side = 2
 })
 
 -- Реестр элементов для сохранения/загрузки конфига (Flag -> объект)
@@ -224,9 +273,9 @@ UIRegistry.ESPMaxDistance = EspSection:Slider({
     end
 })
 
--- ==================== СЕКЦИИ ВИЗУАЛЫ, АИМБОТ, НАСТРОЙКИ =================
+-- ============ ХИТБОКС — правая колонка страницы «Аимбот» =============
 
-UIRegistry.HitboxEnabled = AimSection:Toggle({
+UIRegistry.HitboxEnabled = HitboxSection:Toggle({
     Name = "Hitbox Expander",
     Flag = "HitboxEnabled",
     Default = false,
@@ -235,7 +284,7 @@ UIRegistry.HitboxEnabled = AimSection:Toggle({
     end
 })
 
-UIRegistry.HitboxSize = AimSection:Slider({
+UIRegistry.HitboxSize = HitboxSection:Slider({
     Name = "Hitbox Size",
     Flag = "HitboxSize",
     Default = 9,
@@ -761,7 +810,7 @@ local function makeCycleButton(label, order)
     b.AutoButtonColor = false
     b.Size = UDim2.new(1, 0, 0, 32)
     b.LayoutOrder = order
-    b.Parent = AimSection.Items["Content"].Instance
+    b.Parent = TargetSection.Items["Content"].Instance
 
     local c = Instance.new("UICorner")
     c.CornerRadius = UDim.new(0, 5)
@@ -1132,7 +1181,7 @@ cfgStatus.TextColor3 = Color3.fromRGB(0, 255, 120)
 cfgStatus.BackgroundTransparency = 1
 cfgStatus.Size = UDim2.new(1, 0, 0, 16)
 cfgStatus.LayoutOrder = 92
-cfgStatus.Parent = MiscSection.Items["Content"].Instance
+cfgStatus.Parent = ConfigSection.Items["Content"].Instance
 
 local function flashStatus(text, isError)
     cfgStatus.Text = text
@@ -1144,7 +1193,7 @@ local function flashStatus(text, isError)
     end)
 end
 
-MiscSection:Button({
+ConfigSection:Button({
     Name = "Сохранить конфиг",
     Callback = function()
         local okFile, err = saveConfig()
@@ -1158,7 +1207,7 @@ MiscSection:Button({
     end
 })
 
-MiscSection:Button({
+ConfigSection:Button({
     Name = "Загрузить конфиг",
     Callback = function()
         local okFile, err = loadConfig()
