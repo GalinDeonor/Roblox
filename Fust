@@ -1,25 +1,29 @@
 --[[
-    FUST Survival — FUST_FIXED V4 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V5 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V4 — вайтлист под телефон:
-    • Список игроков больше НЕ дропдаун Avilon. У дропдауна варианты висели
-      на MouseButton1Down — на телефоне это срабатывало при ЛИСТАНИИ списка,
-      выбирая случайных игроков; а закрытие проверяло Mouse.X/Y, который от
-      касаний не обновляется — поэтому список сам «исчезал».
-    • Теперь свой список на .Activated: тап по игроку = добавить/убрать,
-      листание ничего не выбирает, список сам не закрывается.
-    • Ручной ввод — настоящий TextBox (Active/Selectable = true): тап по
-      полю поднимает клавиатуру; вписал ник — кнопки «+ Добавить»/«- Убрать».
+    НОВОЕ В V5 — аимбот (движок перенесён из NERAKA и переработан):
+    • Камера-лок с плавностью (Smooth) и упреждением (Предикт, сек) —
+      для стрельбы по игрокам на транспорте.
+    • Дистанция аима до 1500м; FOV-круг зеленеет при захвате цели;
+      красный прицел по центру экрана.
+    • Аим парт: ГОЛОВА / ТЕЛО / НОГИ / РАНДОМ (кнопка-переключатель).
+    • Приоритет цели: по прицелу (ближе к центру) или по дистанции.
+    • Проверка стен (не целит сквозь препятствия) и проверка команды
+      (тимейтов), плюс вайтлист аимбот не трогает никогда.
+    • mousemoverel из оригинала вырезан — на телефоне он не работает,
+      работает только камера-лок.
 
-    ИСПРАВЛЕНО РАНЕЕ (V2/V3):
-    1. ESP Box — бокс по 8 углам 3D-габарита; глубина через Dot-произведение
-       (у Delta WorldToViewportPoint врёт Z на дистанции — ESP пропадал за
-       ~300м). Порог размера 1px — бокс/имя/дистанция живут до MaxDistance.
+    ИСПРАВЛЕНО РАНЕЕ (V2–V4):
+    1. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт по Z
+       в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
     2. FullBright возвращает освещение при выключении.
-    3. NoDecoration — исправлен тернарный баг (декорации не скрывались).
+    3. NoDecoration — исправлен тернарный баг.
     4. Хитбокс восстанавливает CanCollide при выключении.
-    5. GUI переносится в CoreGui (запасной вариант — PlayerGui), безопасная
-       выгрузка прошлого запуска, пошаговый лог [FUST] 1/4 ... 4/4 в консоли.
+    5. GUI в CoreGui (запасной — PlayerGui), выгрузка прошлого запуска,
+       лог [FUST] 1/4 ... 4/4.
+    6. Вайтлист — своя панель на .Activated: тап по игроку добавляет/
+       убирает, листание не выбирает лишнее; TextBox с клавиатурой на
+       телефоне и кнопками «+ Добавить»/«- Убрать».
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -608,6 +612,330 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 rebuildPlayerList()
+-- ==================== АИМБОТ (движок из NERAKA, переработан) =============
+-- Камера-лок с плавностью (Smooth) и упреждением (Предикт).
+-- mousemoverel из оригинала вырезан — на телефоне он не работает.
+-- Вайтлист (друзья) аимбот не трогает никогда.
+
+local Aim = {
+    Enabled = false,
+    ShowFOV = false,
+    FOV = 150,           -- радиус круга (px)
+    Distance = 500,      -- дистанция аима (м)
+    Smooth = 4,          -- 1 = резко, 20 = очень плавно
+    Prediction = 0.5,    -- упреждение в секундах (стрельба по транспорту)
+    Part = "Head",       -- Head / Torso / Legs / Random
+    Priority = "Прицел", -- Прицел = ближе к центру экрана, Дистанция = ближе телом
+    WallCheck = true,
+    TeamCheck = false,
+    Crosshair = false,
+}
+
+local AIM_PARTS = { "Head", "Torso", "Legs", "Random" }
+local AIM_PART_NAMES = { Head = "ГОЛОВА", Torso = "ТЕЛО", Legs = "НОГИ", Random = "РАНДОМ" }
+
+-- ---- Секция в меню ----
+local AimSection = SettingsSubPage:Section({
+    Name = "Аимбот",
+    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
+    Side = 1
+})
+
+AimSection:Toggle({
+    Name = "Аимбот (камера-лок)",
+    Flag = "AimEnabled",
+    Default = false,
+    Callback = function(state)
+        Aim.Enabled = state
+    end
+})
+
+AimSection:Toggle({
+    Name = "FOV круг (зеленеет при захвате)",
+    Flag = "AimShowFOV",
+    Default = false,
+    Callback = function(state)
+        Aim.ShowFOV = state
+    end
+})
+
+AimSection:Toggle({
+    Name = "Проверка стен",
+    Flag = "AimWallCheck",
+    Default = true,
+    Callback = function(state)
+        Aim.WallCheck = state
+    end
+})
+
+AimSection:Toggle({
+    Name = "Не целить тимейтов (одна команда)",
+    Flag = "AimTeamCheck",
+    Default = false,
+    Callback = function(state)
+        Aim.TeamCheck = state
+    end
+})
+
+AimSection:Toggle({
+    Name = "Красный прицел по центру",
+    Flag = "AimCrosshair",
+    Default = false,
+    Callback = function(state)
+        Aim.Crosshair = state
+    end
+})
+
+AimSection:Slider({
+    Name = "FOV радиус",
+    Flag = "AimFOV",
+    Default = 150,
+    Min = 50,
+    Max = 400,
+    Decimals = 5,
+    Suffix = "px",
+    Callback = function(Value)
+        Aim.FOV = Value
+    end
+})
+
+AimSection:Slider({
+    Name = "Дистанция аима",
+    Flag = "AimDistance",
+    Default = 500,
+    Min = 50,
+    Max = 1500,
+    Decimals = 10,
+    Suffix = "m",
+    Callback = function(Value)
+        Aim.Distance = Value
+    end
+})
+
+AimSection:Slider({
+    Name = "Smooth (1 резко — 20 плавно)",
+    Flag = "AimSmooth",
+    Default = 4,
+    Min = 1,
+    Max = 20,
+    Decimals = 1,
+    Callback = function(Value)
+        Aim.Smooth = Value
+    end
+})
+
+AimSection:Slider({
+    Name = "Предикт (упреждение)",
+    Flag = "AimPrediction",
+    Default = 0.5,
+    Min = 0,
+    Max = 2,
+    Decimals = 0.05,
+    Suffix = "с",
+    Callback = function(Value)
+        Aim.Prediction = Value
+    end
+})
+
+local aimPartIndex = 1
+local aimPartButton = AimSection:Button({
+    Name = "Аим парт: ГОЛОВА",
+    Callback = function()
+        aimPartIndex = aimPartIndex % #AIM_PARTS + 1
+        Aim.Part = AIM_PARTS[aimPartIndex]
+        aimPartButton:SetText("Аим парт: " .. AIM_PART_NAMES[Aim.Part])
+    end
+})
+
+local aimPriorityButton = AimSection:Button({
+    Name = "Приоритет: ПРИЦЕЛ",
+    Callback = function()
+        Aim.Priority = (Aim.Priority == "Прицел") and "Дистанция" or "Прицел"
+        aimPriorityButton:SetText("Приоритет: " .. string.upper(Aim.Priority))
+    end
+})
+
+-- ---- Отрисовка: FOV круг + прицел по центру ----
+local AIM_FOV_OFF = Color3.fromRGB(150, 0, 20)
+local AIM_FOV_ON = Color3.fromRGB(0, 255, 100)
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 1.5
+fovCircle.NumSides = 64
+fovCircle.Filled = false
+fovCircle.Radius = Aim.FOV
+fovCircle.Color = AIM_FOV_OFF
+fovCircle.Visible = false
+
+local CH_GAP, CH_LEN = 5, 7
+local chLines = {}
+for i = 1, 4 do
+    local l = Drawing.new("Line")
+    l.Thickness = 2
+    l.Color = Color3.fromRGB(255, 30, 30)
+    l.Visible = false
+    chLines[i] = l
+end
+
+local function updateCrosshair(center, visible)
+    chLines[1].From = Vector2.new(center.X, center.Y - CH_GAP)
+    chLines[1].To = Vector2.new(center.X, center.Y - CH_GAP - CH_LEN)
+    chLines[2].From = Vector2.new(center.X, center.Y + CH_GAP)
+    chLines[2].To = Vector2.new(center.X, center.Y + CH_GAP + CH_LEN)
+    chLines[3].From = Vector2.new(center.X - CH_GAP, center.Y)
+    chLines[3].To = Vector2.new(center.X - CH_GAP - CH_LEN, center.Y)
+    chLines[4].From = Vector2.new(center.X + CH_GAP, center.Y)
+    chLines[4].To = Vector2.new(center.X + CH_GAP + CH_LEN, center.Y)
+    for i = 1, 4 do
+        chLines[i].Visible = visible
+    end
+end
+
+-- ---- Поиск цели ----
+local aimRayParams = RaycastParams.new()
+aimRayParams.FilterType = Enum.RaycastFilterType.Exclude
+aimRayParams.IgnoreWater = true
+
+local function resolveAimPart(character, choice)
+    local pick = choice
+    if pick == "Random" then
+        pick = AIM_PARTS[math.random(1, 3)]
+    end
+    if pick == "Head" then
+        return character:FindFirstChild("Head") or character:FindFirstChild("UpperTorso")
+    elseif pick == "Torso" then
+        return character:FindFirstChild("UpperTorso")
+            or character:FindFirstChild("Torso")
+            or character:FindFirstChild("HumanoidRootPart")
+    elseif pick == "Legs" then
+        return character:FindFirstChild("LeftLeg")
+            or character:FindFirstChild("RightLeg")
+            or character:FindFirstChild("LeftFoot")
+            or character:FindFirstChild("RightFoot")
+    end
+    return character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Луч от камеры до точки прицеливания: исключаем своего и чужого персонажа,
+-- поэтому ЛЮБОЙ.hit = стена/препятствие
+local function wallBetween(fromPos, targetChar, targetPos)
+    local filter = {}
+    if LocalPlayer.Character then
+        table.insert(filter, LocalPlayer.Character)
+    end
+    table.insert(filter, targetChar)
+    aimRayParams.FilterDescendantsInstances = filter
+    return Workspace:Raycast(fromPos, targetPos - fromPos, aimRayParams) ~= nil
+end
+
+-- Возвращает part и точку наведения (уже с предиктом)
+local function getAimTarget(camera)
+    local char = LocalPlayer.Character
+    local localRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if not localRoot then
+        return nil
+    end
+
+    local camPos = camera.CFrame.Position
+    local look = camera.CFrame.LookVector
+    local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+    local bestPart, bestPoint
+    local bestScore = math.huge
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer
+            and Whitelist[plr.Name] == nil
+            and not (Aim.TeamCheck and plr.Team ~= nil and plr.Team == LocalPlayer.Team) then
+
+            local model = plr.Character
+            local hum = model and model:FindFirstChildOfClass("Humanoid")
+            local root = model and model:FindFirstChild("HumanoidRootPart")
+
+            if hum and root and hum.Health > 0 then
+                local worldDist = (root.Position - localRoot.Position).Magnitude
+                if worldDist <= Aim.Distance then
+                    local part = resolveAimPart(model, Aim.Part)
+                    if part then
+                        -- Предикт: упреждение по скорости корня (включая транспорт)
+                        local vel = root.AssemblyLinearVelocity
+                        local aimPos = part.Position + vel * Aim.Prediction
+
+                        -- Глубина через Dot: WorldToViewportPoint на Delta врёт по Z
+                        local toPoint = aimPos - camPos
+                        if toPoint:Dot(look) > 0 then
+                            local sp = camera:WorldToViewportPoint(aimPos)
+                            local screenDist = (center - Vector2.new(sp.X, sp.Y)).Magnitude
+
+                            if screenDist <= Aim.FOV then
+                                if not Aim.WallCheck or not wallBetween(camPos, model, aimPos) then
+                                    local score = (Aim.Priority == "Дистанция") and worldDist or screenDist
+                                    if score < bestScore then
+                                        bestScore = score
+                                        bestPart = part
+                                        bestPoint = aimPos
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return bestPart, bestPoint
+end
+
+-- Выгрузка отрисовки прошлого запуска
+if getgenv().FUST_AimCleanup then
+    pcall(getgenv().FUST_AimCleanup)
+end
+
+-- ---- Главный цикл ----
+local aimConnection
+aimConnection = RunService.RenderStepped:Connect(function()
+    local camera = Workspace.CurrentCamera
+    if not camera then
+        return
+    end
+
+    local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    updateCrosshair(center, Aim.Crosshair)
+
+    if not Aim.Enabled then
+        fovCircle.Visible = false
+        return
+    end
+
+    local part, aimPos = getAimTarget(camera)
+
+    fovCircle.Position = center
+    fovCircle.Radius = Aim.FOV
+    fovCircle.Color = part and AIM_FOV_ON or AIM_FOV_OFF
+    fovCircle.Visible = Aim.ShowFOV
+
+    if part and aimPos then
+        local alpha = math.clamp(1 / math.max(Aim.Smooth, 1), 0, 1)
+        camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, aimPos), alpha)
+    end
+end)
+
+getgenv().FUST_AimCleanup = function()
+    if aimConnection then
+        aimConnection:Disconnect()
+        aimConnection = nil
+    end
+    pcall(function()
+        fovCircle:Remove()
+    end)
+    for i = 1, 4 do
+        pcall(function()
+            chLines[i]:Remove()
+        end)
+    end
+end
+
 -- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
 
 local espDrawings = {}
