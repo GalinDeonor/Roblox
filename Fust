@@ -1,19 +1,16 @@
 --[[
-    FUST Survival — FUST_FIXED V5 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V6 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V5 — аимбот (движок перенесён из NERAKA и переработан):
-    • Камера-лок с плавностью (Smooth) и упреждением (Предикт, сек) —
-      для стрельбы по игрокам на транспорте.
-    • Дистанция аима до 1500м; FOV-круг зеленеет при захвате цели;
-      красный прицел по центру экрана.
-    • Аим парт: ГОЛОВА / ТЕЛО / НОГИ / РАНДОМ (кнопка-переключатель).
-    • Приоритет цели: по прицелу (ближе к центру) или по дистанции.
-    • Проверка стен (не целит сквозь препятствия) и проверка команды
-      (тимейтов), плюс вайтлист аимбот не трогает никогда.
-    • mousemoverel из оригинала вырезан — на телефоне он не работает,
-      работает только камера-лок.
+    НОВОЕ В V6 — сортировка меню + сохранение конфигов:
+    • Секции в одном столбце по порядку: ESP → Визуалы → Аимбот → Настройки.
+    • Хитбокс переехал в «Аимбот», вайтлист и конфиги — в «Настройки».
+    • Кнопки «Сохранить конфиг» / «Загрузить конфиг»: сохраняется ВСЁ —
+      ESP, цвет бокса, FullBright, NoDecoration, NoGrass, хитбокс, все
+      настройки аимбота (включая парт/приоритет) и вайтлист.
+      Файл: FUST_config.json в папке scripts у Delta.
+    • Ни одна функция не удалена — всё только переехало по секциям.
 
-    ИСПРАВЛЕНО РАНЕЕ (V2–V4):
+    РАНЕЕ (V2–V5.1):
     1. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт по Z
        в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
     2. FullBright возвращает освещение при выключении.
@@ -21,9 +18,10 @@
     4. Хитбокс восстанавливает CanCollide при выключении.
     5. GUI в CoreGui (запасной — PlayerGui), выгрузка прошлого запуска,
        лог [FUST] 1/4 ... 4/4.
-    6. Вайтлист — своя панель на .Activated: тап по игроку добавляет/
-       убирает, листание не выбирает лишнее; TextBox с клавиатурой на
-       телефоне и кнопками «+ Добавить»/«- Убрать».
+    6. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
+    7. Аимбот из NERAKA: камера-лок, Smooth, Предикт (транспорт), дистанция
+       до 1500м, FOV-круг, проверка стен/команды, красный прицел.
+    8. V5.1: кнопки «Аим парт»/«Приоритет» на Activated — надпись обновляется.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -94,17 +92,33 @@ local SettingsSubPage = MainPage:SubPage({
     Icon = "rbxassetid://102973834692853"
 })
 
-local LeftSection = SettingsSubPage:Section({
-    Name = "ESP Функции",
-    Description = "Перенесенное ESP из чита",
+-- V6: один столбец, порядок секций: ESP -> Визуалы -> Аимбот -> Настройки
+local EspSection = SettingsSubPage:Section({
+    Name = "ESP",
+    Description = "Функции ESP",
     Side = 1
 })
 
-local RightSection = SettingsSubPage:Section({
-    Name = "Визуалы и Хитбоксы",
-    Description = "Окружение и хитбоксы",
-    Side = 2
+local VisualSection = SettingsSubPage:Section({
+    Name = "Визуалы",
+    Description = "Освещение и окружение",
+    Side = 1
 })
+
+local AimSection = SettingsSubPage:Section({
+    Name = "Аимбот",
+    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
+    Side = 1
+})
+
+local MiscSection = SettingsSubPage:Section({
+    Name = "Настройки",
+    Description = "Конфиги и вайтлист",
+    Side = 1
+})
+
+-- Реестр элементов для сохранения/загрузки конфига (Flag -> объект)
+local UIRegistry = {}
 
 print("[FUST] 3/4: интерфейс создан, окно должно быть на экране")
 
@@ -132,9 +146,9 @@ local Whitelist = {}         -- имя игрока -> true (общий вайт
 local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
 local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
 
--- ============================= ЛЕВАЯ СЕКЦИЯ =============================
+-- ============================== СЕКЦИЯ ESP ==============================
 
-LeftSection:Toggle({
+UIRegistry.ESPEnabled = EspSection:Toggle({
     Name = "ESP Enabled",
     Flag = "ESPEnabled",
     Default = false,
@@ -143,7 +157,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Toggle({
+UIRegistry.ESPBox = EspSection:Toggle({
     Name = "ESP Box",
     Flag = "ESPBox",
     Default = false,
@@ -152,7 +166,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Colorpicker({
+UIRegistry.ESPBoxColor = EspSection:Colorpicker({
     Name = "Цвет бокса",
     Flag = "ESPBoxColor",
     Default = S.ESPColors.Box,
@@ -161,7 +175,7 @@ LeftSection:Colorpicker({
     end
 })
 
-LeftSection:Toggle({
+UIRegistry.ESPChams = EspSection:Toggle({
     Name = "ESP Chams",
     Flag = "ESPChams",
     Default = false,
@@ -170,7 +184,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Toggle({
+UIRegistry.ESPName = EspSection:Toggle({
     Name = "ESP Name",
     Flag = "ESPName",
     Default = false,
@@ -179,7 +193,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Toggle({
+UIRegistry.ESPDistance = EspSection:Toggle({
     Name = "ESP Distance",
     Flag = "ESPDistance",
     Default = false,
@@ -188,7 +202,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Toggle({
+UIRegistry.ESPHealthBar = EspSection:Toggle({
     Name = "ESP HealthBar",
     Flag = "ESPHealthBar",
     Default = false,
@@ -197,7 +211,7 @@ LeftSection:Toggle({
     end
 })
 
-LeftSection:Slider({
+UIRegistry.ESPMaxDistance = EspSection:Slider({
     Name = "Max Distance",
     Flag = "ESPMaxDistance",
     Default = 1500,
@@ -210,9 +224,9 @@ LeftSection:Slider({
     end
 })
 
--- ============================ ПРАВАЯ СЕКЦИЯ =============================
+-- ==================== СЕКЦИИ ВИЗУАЛЫ, АИМБОТ, НАСТРОЙКИ =================
 
-RightSection:Toggle({
+UIRegistry.HitboxEnabled = AimSection:Toggle({
     Name = "Hitbox Expander",
     Flag = "HitboxEnabled",
     Default = false,
@@ -221,7 +235,7 @@ RightSection:Toggle({
     end
 })
 
-RightSection:Slider({
+UIRegistry.HitboxSize = AimSection:Slider({
     Name = "Hitbox Size",
     Flag = "HitboxSize",
     Default = 9,
@@ -236,7 +250,7 @@ RightSection:Slider({
 
 local FullBrightBackup = nil
 
-RightSection:Toggle({
+UIRegistry.FullBright = VisualSection:Toggle({
     Name = "FullBright",
     Flag = "FullBright",
     Default = false,
@@ -261,7 +275,7 @@ RightSection:Toggle({
     end
 })
 
-RightSection:Toggle({
+UIRegistry.NoDecoration = VisualSection:Toggle({
     Name = "Убрать декорации (NoDecoration)",
     Flag = "NoDecoration",
     Default = false,
@@ -280,7 +294,7 @@ RightSection:Toggle({
     end
 })
 
-RightSection:Toggle({
+UIRegistry.NoGrass = VisualSection:Toggle({
     Name = "Убрать траву (No Grass)",
     Flag = "NoGrass",
     Default = false,
@@ -345,7 +359,7 @@ local WL_BRIGHT = Color3.fromRGB(225, 66, 6)
 local WL_TEXT = Color3.fromRGB(199, 199, 212)
 local WL_GRAY = Color3.fromRGB(117, 117, 131)
 
-local wlHost = RightSection.Items["Content"].Instance
+local wlHost = MiscSection.Items["Content"].Instance
 
 local wlPanel = Instance.new("Frame")
 wlPanel.Name = "FustWhitelistPanel"
@@ -634,14 +648,9 @@ local Aim = {
 local AIM_PARTS = { "Head", "Torso", "Legs", "Random" }
 local AIM_PART_NAMES = { Head = "ГОЛОВА", Torso = "ТЕЛО", Legs = "НОГИ", Random = "РАНДОМ" }
 
--- ---- Секция в меню ----
-local AimSection = SettingsSubPage:Section({
-    Name = "Аимбот",
-    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
-    Side = 1
-})
+-- Секция «Аимбот» создана выше, вместе с остальными секциями (V6)
 
-AimSection:Toggle({
+UIRegistry.AimEnabled = AimSection:Toggle({
     Name = "Аимбот (камера-лок)",
     Flag = "AimEnabled",
     Default = false,
@@ -650,7 +659,7 @@ AimSection:Toggle({
     end
 })
 
-AimSection:Toggle({
+UIRegistry.AimShowFOV = AimSection:Toggle({
     Name = "FOV круг (зеленеет при захвате)",
     Flag = "AimShowFOV",
     Default = false,
@@ -659,7 +668,7 @@ AimSection:Toggle({
     end
 })
 
-AimSection:Toggle({
+UIRegistry.AimWallCheck = AimSection:Toggle({
     Name = "Проверка стен",
     Flag = "AimWallCheck",
     Default = true,
@@ -668,7 +677,7 @@ AimSection:Toggle({
     end
 })
 
-AimSection:Toggle({
+UIRegistry.AimTeamCheck = AimSection:Toggle({
     Name = "Не целить тимейтов (одна команда)",
     Flag = "AimTeamCheck",
     Default = false,
@@ -677,7 +686,7 @@ AimSection:Toggle({
     end
 })
 
-AimSection:Toggle({
+UIRegistry.AimCrosshair = AimSection:Toggle({
     Name = "Красный прицел по центру",
     Flag = "AimCrosshair",
     Default = false,
@@ -686,7 +695,7 @@ AimSection:Toggle({
     end
 })
 
-AimSection:Slider({
+UIRegistry.AimFOV = AimSection:Slider({
     Name = "FOV радиус",
     Flag = "AimFOV",
     Default = 150,
@@ -699,7 +708,7 @@ AimSection:Slider({
     end
 })
 
-AimSection:Slider({
+UIRegistry.AimDistance = AimSection:Slider({
     Name = "Дистанция аима",
     Flag = "AimDistance",
     Default = 500,
@@ -712,7 +721,7 @@ AimSection:Slider({
     end
 })
 
-AimSection:Slider({
+UIRegistry.AimSmooth = AimSection:Slider({
     Name = "Smooth (1 резко — 20 плавно)",
     Flag = "AimSmooth",
     Default = 4,
@@ -724,7 +733,7 @@ AimSection:Slider({
     end
 })
 
-AimSection:Slider({
+UIRegistry.AimPrediction = AimSection:Slider({
     Name = "Предикт (упреждение)",
     Flag = "AimPrediction",
     Default = 0.5,
@@ -737,23 +746,43 @@ AimSection:Slider({
     end
 })
 
-local aimPartIndex = 1
-local aimPartButton = AimSection:Button({
-    Name = "Аим парт: ГОЛОВА",
-    Callback = function()
-        aimPartIndex = aimPartIndex % #AIM_PARTS + 1
-        Aim.Part = AIM_PARTS[aimPartIndex]
-        aimPartButton:SetText("Аим парт: " .. AIM_PART_NAMES[Aim.Part])
-    end
-})
+-- V5.1: кнопки-циклы сделаны на «сырых» инстансах (как панель вайтлиста):
+-- у кнопок Avilon на телефоне надпись после нажатия не обновлялась.
+-- Activated + свой Text = гарантированный отклик, тап не срабатывает при листании.
+local function makeCycleButton(label, order)
+    local b = Instance.new("TextButton")
+    b.Name = "FustAimCycle"
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 13
+    b.Text = label
+    b.TextColor3 = Color3.fromRGB(199, 199, 212)
+    b.BackgroundColor3 = Color3.fromRGB(28, 39, 45)
+    b.BorderSizePixel = 0
+    b.AutoButtonColor = false
+    b.Size = UDim2.new(1, 0, 0, 32)
+    b.LayoutOrder = order
+    b.Parent = AimSection.Items["Content"].Instance
 
-local aimPriorityButton = AimSection:Button({
-    Name = "Приоритет: ПРИЦЕЛ",
-    Callback = function()
-        Aim.Priority = (Aim.Priority == "Прицел") and "Дистанция" or "Прицел"
-        aimPriorityButton:SetText("Приоритет: " .. string.upper(Aim.Priority))
-    end
-})
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 5)
+    c.Parent = b
+
+    return b
+end
+
+local aimPartIndex = 1
+local aimPartButton = makeCycleButton("Аим парт: ГОЛОВА", 90)
+aimPartButton.Activated:Connect(function()
+    aimPartIndex = aimPartIndex % #AIM_PARTS + 1
+    Aim.Part = AIM_PARTS[aimPartIndex]
+    aimPartButton.Text = "Аим парт: " .. AIM_PART_NAMES[Aim.Part]
+end)
+
+local aimPriorityButton = makeCycleButton("Приоритет: ПРИЦЕЛ", 91)
+aimPriorityButton.Activated:Connect(function()
+    Aim.Priority = (Aim.Priority == "Прицел") and "Дистанция" or "Прицел"
+    aimPriorityButton.Text = "Приоритет: " .. string.upper(Aim.Priority)
+end)
 
 -- ---- Отрисовка: FOV круг + прицел по центру ----
 local AIM_FOV_OFF = Color3.fromRGB(150, 0, 20)
@@ -935,6 +964,213 @@ getgenv().FUST_AimCleanup = function()
         end)
     end
 end
+
+-- ==================== КОНФИГИ (СОХРАНЕНИЕ / ЗАГРУЗКА) ===================
+-- V6: свой конфиг через writefile/readfile — надёжнее встроенных конфигов
+-- Avilon на Delta. Сохраняется всё: ESP, цвет бокса, визуалы, хитбокс,
+-- аимбот (включая парт/приоритет) и вайтлист. Файл: FUST_config.json.
+
+local HttpService = game:GetService("HttpService")
+local CONFIG_FILE = "FUST_config.json"
+
+local function colorToTable(c)
+    return {
+        R = math.floor(c.R * 255 + 0.5),
+        G = math.floor(c.G * 255 + 0.5),
+        B = math.floor(c.B * 255 + 0.5),
+    }
+end
+
+local function tableToColor(t)
+    if type(t) ~= "table" then
+        return nil
+    end
+    return Color3.fromRGB(tonumber(t.R) or 0, tonumber(t.G) or 0, tonumber(t.B) or 0)
+end
+
+local function saveConfig()
+    local okFile, err = pcall(function()
+        local wl = {}
+        for name in pairs(Whitelist) do
+            table.insert(wl, name)
+        end
+        table.sort(wl)
+
+        local cfg = {
+            ESP = {
+                Enabled = S.ESP.Enabled,
+                Box = S.ESP.Box,
+                Chams = S.ESP.Chams,
+                Name = S.ESP.Name,
+                Distance = S.ESP.Distance,
+                HealthBar = S.ESP.HealthBar,
+                MaxDistance = S.ESP.MaxDistance,
+            },
+            BoxColor = colorToTable(S.ESPColors.Box),
+            Hitbox = {
+                Enabled = S.Hitbox.Enabled,
+                Size = S.Hitbox.Size,
+                Transparency = S.Hitbox.Transparency,
+            },
+            FullBright = S.FullBright,
+            NoDecoration = S.NoDecoration,
+            NoGrass = S.NoGrass,
+            Aim = {
+                Enabled = Aim.Enabled,
+                ShowFOV = Aim.ShowFOV,
+                FOV = Aim.FOV,
+                Distance = Aim.Distance,
+                Smooth = Aim.Smooth,
+                Prediction = Aim.Prediction,
+                Part = Aim.Part,
+                Priority = Aim.Priority,
+                WallCheck = Aim.WallCheck,
+                TeamCheck = Aim.TeamCheck,
+                Crosshair = Aim.Crosshair,
+            },
+            Whitelist = wl,
+        }
+        writefile(CONFIG_FILE, HttpService:JSONEncode(cfg))
+    end)
+    return okFile, err
+end
+
+-- Применяет значение к тумблеру/слайдеру через Set: обновится и картинка
+-- в меню, и состояние, и колбэк (Set у Avilon дергает Callback)
+local function applyFlag(key, value)
+    local obj = UIRegistry[key]
+    if obj and value ~= nil and obj.Set then
+        pcall(function()
+            obj:Set(value)
+        end)
+    end
+end
+
+local function loadConfig()
+    if type(isfile) ~= "function" or not isfile(CONFIG_FILE) then
+        return false, "конфиг ещё не сохранялся"
+    end
+
+    local okFile, err = pcall(function()
+        local cfg = HttpService:JSONDecode(readfile(CONFIG_FILE))
+
+        if type(cfg.ESP) == "table" then
+            applyFlag("ESPEnabled", cfg.ESP.Enabled)
+            applyFlag("ESPBox", cfg.ESP.Box)
+            applyFlag("ESPChams", cfg.ESP.Chams)
+            applyFlag("ESPName", cfg.ESP.Name)
+            applyFlag("ESPDistance", cfg.ESP.Distance)
+            applyFlag("ESPHealthBar", cfg.ESP.HealthBar)
+            applyFlag("ESPMaxDistance", cfg.ESP.MaxDistance)
+        end
+
+        local boxColor = tableToColor(cfg.BoxColor)
+        if boxColor then
+            S.ESPColors.Box = boxColor
+            if UIRegistry.ESPBoxColor and UIRegistry.ESPBoxColor.Set then
+                pcall(function()
+                    UIRegistry.ESPBoxColor:Set(boxColor)
+                end)
+            end
+        end
+
+        if type(cfg.Hitbox) == "table" then
+            applyFlag("HitboxEnabled", cfg.Hitbox.Enabled)
+            applyFlag("HitboxSize", cfg.Hitbox.Size)
+            if cfg.Hitbox.Transparency then
+                S.Hitbox.Transparency = tonumber(cfg.Hitbox.Transparency) or S.Hitbox.Transparency
+            end
+        end
+
+        applyFlag("FullBright", cfg.FullBright)
+        applyFlag("NoDecoration", cfg.NoDecoration)
+        applyFlag("NoGrass", cfg.NoGrass)
+
+        if type(cfg.Aim) == "table" then
+            local a = cfg.Aim
+            applyFlag("AimEnabled", a.Enabled)
+            applyFlag("AimShowFOV", a.ShowFOV)
+            applyFlag("AimFOV", a.FOV)
+            applyFlag("AimDistance", a.Distance)
+            applyFlag("AimSmooth", a.Smooth)
+            applyFlag("AimPrediction", a.Prediction)
+            applyFlag("AimWallCheck", a.WallCheck)
+            applyFlag("AimTeamCheck", a.TeamCheck)
+            applyFlag("AimCrosshair", a.Crosshair)
+
+            if a.Part and table.find(AIM_PARTS, a.Part) then
+                Aim.Part = a.Part
+                aimPartIndex = table.find(AIM_PARTS, a.Part) or 1
+                aimPartButton.Text = "Аим парт: " .. AIM_PART_NAMES[Aim.Part]
+            end
+            if a.Priority == "Прицел" or a.Priority == "Дистанция" then
+                Aim.Priority = a.Priority
+                aimPriorityButton.Text = "Приоритет: " .. string.upper(Aim.Priority)
+            end
+        end
+
+        if type(cfg.Whitelist) == "table" then
+            table.clear(Whitelist)
+            for _, name in ipairs(cfg.Whitelist) do
+                if type(name) == "string" then
+                    Whitelist[name] = true
+                end
+            end
+            rebuildPlayerList()
+        end
+    end)
+    return okFile, err
+end
+
+-- Статус-строка под кнопками (свой инстанс — обновление гарантировано)
+local cfgStatus = Instance.new("TextLabel")
+cfgStatus.Name = "FustConfigStatus"
+cfgStatus.Font = Enum.Font.Gotham
+cfgStatus.TextSize = 12
+cfgStatus.Text = ""
+cfgStatus.TextColor3 = Color3.fromRGB(0, 255, 120)
+cfgStatus.BackgroundTransparency = 1
+cfgStatus.Size = UDim2.new(1, 0, 0, 16)
+cfgStatus.LayoutOrder = 92
+cfgStatus.Parent = MiscSection.Items["Content"].Instance
+
+local function flashStatus(text, isError)
+    cfgStatus.Text = text
+    cfgStatus.TextColor3 = isError and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(0, 255, 120)
+    task.delay(2.5, function()
+        if cfgStatus.Text == text then
+            cfgStatus.Text = ""
+        end
+    end)
+end
+
+MiscSection:Button({
+    Name = "Сохранить конфиг",
+    Callback = function()
+        local okFile, err = saveConfig()
+        if okFile then
+            flashStatus("Конфиг сохранён ✓")
+            print("[FUST] Конфиг сохранён: " .. CONFIG_FILE)
+        else
+            flashStatus("Ошибка сохранения!", true)
+            warn("[FUST] Конфиг не сохранён: " .. tostring(err))
+        end
+    end
+})
+
+MiscSection:Button({
+    Name = "Загрузить конфиг",
+    Callback = function()
+        local okFile, err = loadConfig()
+        if okFile then
+            flashStatus("Конфиг загружен ✓")
+            print("[FUST] Конфиг загружен: " .. CONFIG_FILE)
+        else
+            flashStatus("Конфиг не найден", true)
+            warn("[FUST] Конфиг не загружен: " .. tostring(err))
+        end
+    end
+})
 
 -- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
 
