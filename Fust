@@ -1,0 +1,741 @@
+--[[
+    FUST Survival — FUST_FIXED V3 (VOMAGLA & Library / Avilon)
+
+    ИСПРАВЛЕНО:
+    1. ESP Box — бокс по 8 углам 3D-габарита персонажа; глубина считается через
+       Dot-произведение (у Delta WorldToViewportPoint врёт Z на дистанции — из-за
+       этого ESP пропадал дальше ~300м). Порог размера 1px — бокс/имя/дистанция
+       живут до самого MaxDistance.
+    2. Вайтлист — дропдаун с игроками + ручной ввод кнопками (Enter на Delta
+       не пробрасывается, старое поле с Finished=true не работало в принципе).
+    3. FullBright возвращает освещение при выключении.
+    4. NoDecoration — исправлен тернарный баг (декорации не скрывались).
+    5. Хитбокс восстанавливает CanCollide при выключении.
+
+    НОВОЕ В V3 (если меню не открывается):
+    • Контейнеры GUI библиотеки принудительно переносятся в CoreGui
+      (запасной вариант — PlayerGui) — чинит "невидимое меню" на Delta.
+    • Безопасная выгрузка прошлого запуска перед загрузкой.
+    • Пошаговый лог в Delta Console: [FUST] 1/4 ... 4/4.
+      Если меню не появилось — открой Delta Console и посмотри,
+      на каком шаге скрипт остановился, и есть ли строка [FUST] ОШИБКА.
+]]
+
+print("[FUST] 1/4: запуск скрипта...")
+
+local ok, err = pcall(function()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer
+
+-- Безопасная выгрузка прошлого запуска (иначе повторный execute может молча умереть)
+if getgenv().Library and getgenv().Library.Exit then
+    pcall(function()
+        getgenv().Library:Exit()
+    end)
+    getgenv().Library = nil
+end
+
+print("[FUST] 2/4: загружаю библиотеку Avilon...")
+
+local libSource = game:HttpGet("https://raw.githubusercontent.com/NIcoGabrielRealYtr/Avilon-Library/refs/heads/main/Source")
+local libFn, libCompileErr = loadstring(libSource)
+if not libFn then
+    error("библиотека не скомпилировалась: " .. tostring(libCompileErr))
+end
+local Library = libFn()
+
+-- ЧИНЬ НЕВИДИМОГО МЕНЮ: на некоторых сборках Delta контейнер gethui()
+-- не рендерится. Принудительно переносим GUI в CoreGui,
+-- если не вышло — в PlayerGui с максимальным DisplayOrder.
+pcall(function()
+    local function reparent(gui)
+        if not gui or not gui.Instance then
+            return
+        end
+        local coreGui = game:GetService("CoreGui")
+        gui.Instance.Parent = coreGui
+        if gui.Instance.Parent ~= coreGui then
+            local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            if pg then
+                gui.Instance.Parent = pg
+                gui.Instance.DisplayOrder = 999999
+            end
+        else
+            gui.Instance.DisplayOrder = 999999
+        end
+    end
+    reparent(Library.Holder)
+    reparent(Library.UnusedHolder)
+end)
+
+local Window = Library:Window({
+    Name = "Fust Survival",
+    SubName = "VOMAGLA & Library",
+    Logo = "rbxassetid://114856413138528"
+})
+
+local MainPage = Window:Page({
+    Name = "Main",
+    Icon = "rbxassetid://102973834692853"
+})
+
+local SettingsSubPage = MainPage:SubPage({
+    Name = "Settings",
+    Description = "Полный функционал читов",
+    Icon = "rbxassetid://102973834692853"
+})
+
+local LeftSection = SettingsSubPage:Section({
+    Name = "ESP Функции",
+    Description = "Перенесенное ESP из чита",
+    Side = 1
+})
+
+local RightSection = SettingsSubPage:Section({
+    Name = "Визуалы и Хитбоксы",
+    Description = "Окружение и хитбоксы",
+    Side = 2
+})
+
+print("[FUST] 3/4: интерфейс создан, окно должно быть на экране")
+
+local S = {
+    ESP = {
+        Enabled = false,
+        Box = false,
+        Chams = false,
+        Name = false,
+        Distance = false,
+        HealthBar = false,
+        MaxDistance = 1500,
+    },
+    ESPColors = {
+        Box = Color3.fromRGB(0, 255, 255),
+    },
+    Hitbox = { Enabled = false, Size = 9, Transparency = 0.7 },
+    FullBright = false,
+    NoDecoration = false,
+    NoGrass = false,
+}
+
+local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
+local DropdownSelected = {}  -- имена, выбранные через дропдаун
+local PendingName = ""       -- текст, введённый в поле вручную
+
+local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
+local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
+
+-- ============================= ЛЕВАЯ СЕКЦИЯ =============================
+
+LeftSection:Toggle({
+    Name = "ESP Enabled",
+    Flag = "ESPEnabled",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Enabled = state
+    end
+})
+
+LeftSection:Toggle({
+    Name = "ESP Box",
+    Flag = "ESPBox",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Box = state
+    end
+})
+
+LeftSection:Colorpicker({
+    Name = "Цвет бокса",
+    Flag = "ESPBoxColor",
+    Default = S.ESPColors.Box,
+    Callback = function(color)
+        S.ESPColors.Box = color
+    end
+})
+
+LeftSection:Toggle({
+    Name = "ESP Chams",
+    Flag = "ESPChams",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Chams = state
+    end
+})
+
+LeftSection:Toggle({
+    Name = "ESP Name",
+    Flag = "ESPName",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Name = state
+    end
+})
+
+LeftSection:Toggle({
+    Name = "ESP Distance",
+    Flag = "ESPDistance",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Distance = state
+    end
+})
+
+LeftSection:Toggle({
+    Name = "ESP HealthBar",
+    Flag = "ESPHealthBar",
+    Default = false,
+    Callback = function(state)
+        S.ESP.HealthBar = state
+    end
+})
+
+LeftSection:Slider({
+    Name = "Max Distance",
+    Flag = "ESPMaxDistance",
+    Default = 1500,
+    Min = 100,
+    Max = 5000,
+    Decimals = 50,
+    Suffix = "m",
+    Callback = function(Value)
+        S.ESP.MaxDistance = Value
+    end
+})
+
+-- ============================ ПРАВАЯ СЕКЦИЯ =============================
+
+RightSection:Toggle({
+    Name = "Hitbox Expander",
+    Flag = "HitboxEnabled",
+    Default = false,
+    Callback = function(state)
+        S.Hitbox.Enabled = state
+    end
+})
+
+RightSection:Slider({
+    Name = "Hitbox Size",
+    Flag = "HitboxSize",
+    Default = 9,
+    Min = 2,
+    Max = 15,
+    Decimals = 0.5,
+    Suffix = "",
+    Callback = function(Value)
+        S.Hitbox.Size = Value
+    end
+})
+
+local FullBrightBackup = nil
+
+RightSection:Toggle({
+    Name = "FullBright",
+    Flag = "FullBright",
+    Default = false,
+    Callback = function(state)
+        S.FullBright = state
+        if state then
+            -- запоминаем исходное освещение
+            FullBrightBackup = {
+                Brightness = Lighting.Brightness,
+                ClockTime = Lighting.ClockTime,
+                FogEnd = Lighting.FogEnd,
+                GlobalShadows = Lighting.GlobalShadows,
+            }
+        elseif FullBrightBackup then
+            -- возвращаем как было
+            Lighting.Brightness = FullBrightBackup.Brightness
+            Lighting.ClockTime = FullBrightBackup.ClockTime
+            Lighting.FogEnd = FullBrightBackup.FogEnd
+            Lighting.GlobalShadows = FullBrightBackup.GlobalShadows
+            FullBrightBackup = nil
+        end
+    end
+})
+
+RightSection:Toggle({
+    Name = "Убрать декорации (NoDecoration)",
+    Flag = "NoDecoration",
+    Default = false,
+    Callback = function(state)
+        S.NoDecoration = state
+        pcall(function()
+            local decor = Workspace:FindFirstChild("Decorations") or Workspace:FindFirstChild("TerrainDecorations")
+            if decor then
+                if state then
+                    decor.Parent = nil
+                else
+                    decor.Parent = Workspace
+                end
+            end
+        end)
+    end
+})
+
+RightSection:Toggle({
+    Name = "Убрать траву (No Grass)",
+    Flag = "NoGrass",
+    Default = false,
+    Callback = function(state)
+        S.NoGrass = state
+        coroutine.wrap(pcall)(function()
+            local terrain = Workspace:FindFirstChildOfClass("Terrain")
+            if not terrain then
+                repeat
+                    task.wait()
+                until Workspace:FindFirstChildOfClass("Terrain")
+                terrain = Workspace:FindFirstChildOfClass("Terrain")
+            end
+            if sethiddenproperty then
+                sethiddenproperty(terrain, "Decoration", not state)
+            else
+                warn("Your exploit does not support sethiddenproperty.")
+            end
+        end)
+    end
+})
+
+-- ============================== ВАЙТЛИСТ ================================
+
+local WhitelistDropdown
+local WhitelistBox
+
+local function normalizeName(raw)
+    if type(raw) ~= "string" then
+        return ""
+    end
+    local name = raw:gsub("^%s+", ""):gsub("%s+$", "")
+    name = name:gsub("^@", "")
+    return name
+end
+
+-- Ищет игрока по нику/DisplayName (без учёта регистра), иначе возвращает текст как есть
+local function resolveName(raw)
+    local name = normalizeName(raw)
+    if name == "" then
+        return nil
+    end
+    local lower = string.lower(name)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if string.lower(plr.Name) == lower then
+            return plr.Name
+        end
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if string.lower(plr.DisplayName) == lower then
+            return plr.Name
+        end
+    end
+    return name
+end
+
+-- Синхронизирует Whitelist с выбором в дропдауне
+local function applyWhitelistFromDropdown(list)
+    local newSet = {}
+    if type(list) == "table" then
+        for _, name in ipairs(list) do
+            newSet[name] = true
+        end
+    end
+
+    local inGame = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        inGame[plr.Name] = true
+    end
+
+    -- снимаем тех, кто был выбран через дропдаун и больше не выбран
+    for name in pairs(DropdownSelected) do
+        if not newSet[name] and inGame[name] then
+            Whitelist[name] = nil
+        end
+    end
+
+    for name in pairs(newSet) do
+        Whitelist[name] = true
+    end
+
+    DropdownSelected = newSet
+end
+
+local function refreshWhitelistDropdown()
+    if not WhitelistDropdown then
+        return
+    end
+    pcall(function()
+        local names = {}
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                table.insert(names, plr.Name)
+            end
+        end
+        table.sort(names)
+
+        WhitelistDropdown:Refresh(names)
+
+        -- сбрасываем устаревшее состояние мульти-дропдауна
+        WhitelistDropdown.Value = {}
+        WhitelistDropdown.Items["Value"].Instance.Text = "..."
+
+        -- отмечаем тех, кто уже в вайтлисте
+        local selected = {}
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and Whitelist[plr.Name] then
+                table.insert(selected, plr.Name)
+            end
+        end
+        if #selected > 0 then
+            WhitelistDropdown:Set(selected)
+        end
+    end)
+end
+
+WhitelistDropdown = RightSection:Dropdown({
+    Name = "Вайтлист (игроки на сервере)",
+    Flag = "WhitelistDropdown",
+    Items = {},
+    Multi = true,
+    MaxSize = 170,
+    Callback = function(list)
+        applyWhitelistFromDropdown(list)
+    end
+})
+
+RightSection:Button({
+    Name = "Обновить список игроков",
+    Callback = function()
+        refreshWhitelistDropdown()
+    end
+})
+
+WhitelistBox = RightSection:Textbox({
+    Name = "Вайтлист (ник вручную)",
+    Flag = "WhitelistInput",
+    Default = "",
+    Placeholder = "Введите ник...",
+    Finished = false, -- важно: с true колбэк требует Enter и не работает на Delta
+    Callback = function(text)
+        PendingName = tostring(text or "")
+    end
+})
+
+RightSection:Button({
+    Name = "Добавить ник в вайтлист",
+    Callback = function()
+        local name = resolveName(PendingName)
+        if name then
+            Whitelist[name] = true
+            refreshWhitelistDropdown()
+        end
+        if WhitelistBox then
+            WhitelistBox:Set("")
+        end
+    end
+})
+
+RightSection:Button({
+    Name = "Убрать ник из вайтлиста",
+    Callback = function()
+        local name = resolveName(PendingName)
+        if name then
+            Whitelist[name] = nil
+            refreshWhitelistDropdown()
+        end
+        if WhitelistBox then
+            WhitelistBox:Set("")
+        end
+    end
+})
+
+Players.PlayerAdded:Connect(function()
+    task.defer(refreshWhitelistDropdown)
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.defer(refreshWhitelistDropdown)
+end)
+
+-- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
+
+local espDrawings = {}
+
+local function removeEspDrawings(plr)
+    local ed = espDrawings[plr]
+    if ed then
+        for _, obj in pairs(ed) do
+            pcall(function()
+                obj:Remove()
+            end)
+        end
+        espDrawings[plr] = nil
+    end
+end
+
+local function ensureEspDrawings(plr)
+    local ed = espDrawings[plr]
+    if not ed then
+        ed = {
+            Box = Drawing.new("Square"),
+            Name = Drawing.new("Text"),
+            Distance = Drawing.new("Text"),
+            HealthBarBg = Drawing.new("Line"),
+            HealthBar = Drawing.new("Line"),
+            HealthText = Drawing.new("Text"),
+        }
+
+        ed.Box.Filled = false
+        ed.Box.Thickness = 1
+
+        for _, key in ipairs({ "Name", "Distance", "HealthText" }) do
+            ed[key].Center = true
+            ed[key].Outline = true
+            ed[key].Font = Drawing.Fonts.Plex
+        end
+        ed.Name.Size = 14
+        ed.Distance.Size = 13
+        ed.HealthText.Size = 11
+        ed.HealthText.Center = false
+
+        ed.HealthBarBg.Thickness = 3
+        ed.HealthBarBg.Color = Color3.fromRGB(0, 0, 0)
+        ed.HealthBar.Thickness = 1.5
+
+        espDrawings[plr] = ed
+    end
+    return ed
+end
+
+local function hideEspDrawings(ed)
+    ed.Box.Visible = false
+    ed.Name.Visible = false
+    ed.Distance.Visible = false
+    ed.HealthBarBg.Visible = false
+    ed.HealthBar.Visible = false
+    ed.HealthText.Visible = false
+end
+
+-- Габарит персонажа в студах (ширина, высота, глубина)
+local BOX_SIZE = Vector3.new(4, 6, 2.5)
+
+-- Проецирует 8 углов 3D-габарита персонажа на экран.
+-- Возвращает левый-верхний угол и размер в пикселях, либо nil,
+-- если персонаж за камерой (тогда проекция зеркалится — рисовать нельзя).
+-- ВАЖНО: глубину (перед камерой / за камерой) считаем сами через Dot —
+-- у Delta WorldToViewportPoint возвращает мусорный Z на большой дистанции,
+-- из-за чего ESP пропадал дальше ~300м. X/Y у проекции точные — их берём.
+local function getScreenBox(camera, root)
+    local camCF = camera.CFrame
+    local camPos = camCF.Position
+    local look = camCF.LookVector
+
+    local cf = root.CFrame
+    local hx, hy, hz = BOX_SIZE.X * 0.5, BOX_SIZE.Y * 0.5, BOX_SIZE.Z * 0.5
+
+    local minX, minY = math.huge, math.huge
+    local maxX, maxY = -math.huge, -math.huge
+
+    for i = 0, 7 do
+        local ox = (i % 2 == 0) and -hx or hx
+        local oy = (i % 4 < 2) and -hy or hy
+        local oz = (i < 4) and -hz or hz
+
+        local corner = (cf * CFrame.new(ox, oy, oz)).Position
+
+        -- своя глубина: < 0 = точка за плоскостью камеры
+        local depth = (corner - camPos):Dot(look)
+        if depth <= 0.1 then
+            return nil
+        end
+
+        local pt = camera:WorldToViewportPoint(corner)
+
+        if pt.X < minX then minX = pt.X end
+        if pt.X > maxX then maxX = pt.X end
+        if pt.Y < minY then minY = pt.Y end
+        if pt.Y > maxY then maxY = pt.Y end
+    end
+
+    return Vector2.new(minX, minY), Vector2.new(maxX - minX, maxY - minY)
+end
+
+RunService.RenderStepped:Connect(function()
+    local Camera = Workspace.CurrentCamera
+    if not Camera then
+        return
+    end
+
+    if S.FullBright then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    end
+
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local isWhitelisted = Whitelist[player.Name] == true
+
+            ---------------- Хитбоксы ----------------
+            if root then
+                local defaultSize = Vector3.new(2, 2, 1)
+                local expanded = false
+
+                if S.Hitbox.Enabled and myRoot and not isWhitelisted then
+                    local dist = (root.Position - myRoot.Position).Magnitude
+                    if dist <= S.ESP.MaxDistance then
+                        local targetSize = Vector3.new(S.Hitbox.Size, S.Hitbox.Size, S.Hitbox.Size)
+                        if root.Size ~= targetSize then
+                            root.Size = targetSize
+                        end
+                        root.Transparency = S.Hitbox.Transparency
+                        root.CanCollide = false
+                        expanded = true
+                    end
+                end
+
+                if not expanded then
+                    if root.Size ~= defaultSize then
+                        root.Size = defaultSize
+                    end
+                    root.Transparency = 1
+                    root.CanCollide = true
+                end
+            end
+
+            ---------------- Chams ----------------
+            local highlight = char and char:FindFirstChild("VOMAGLA_Chams")
+            if S.ESP.Enabled and S.ESP.Chams and char and root and myRoot then
+                local dist = (root.Position - myRoot.Position).Magnitude
+                if dist <= S.ESP.MaxDistance then
+                    if not highlight then
+                        highlight = Instance.new("Highlight")
+                        highlight.Name = "VOMAGLA_Chams"
+                        highlight.Adornee = char
+                        highlight.Parent = char
+                    end
+
+                    highlight.FillColor = isWhitelisted and COLOR_WHITELIST or S.ESPColors.Box
+                    local alpha = math.clamp(0.2 + (dist / S.ESP.MaxDistance) * 0.6, 0.2, 0.8)
+                    highlight.FillTransparency = alpha
+                    highlight.OutlineTransparency = alpha * 0.5
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Enabled = true
+                elseif highlight then
+                    highlight.Enabled = false
+                end
+            elseif highlight then
+                highlight.Enabled = false
+            end
+
+            ---------------- ESP ----------------
+            if S.ESP.Enabled and char and root and myRoot and hum and hum.Health > 0 then
+                local dist = (root.Position - myRoot.Position).Magnitude
+                if dist <= S.ESP.MaxDistance then
+                    local topLeft, boxSize = getScreenBox(Camera, root)
+
+                    -- порог 1px: дальше ~1200м бокс уже 2-3px, но имя/дистанция должны жить
+                    if topLeft and boxSize.X >= 1 and boxSize.Y >= 1 then
+                        local ed = ensureEspDrawings(player)
+
+                        local pad = 2
+                        local bx = topLeft.X - pad
+                        local by = topLeft.Y - pad
+                        local bw = boxSize.X + pad * 2
+                        local bh = boxSize.Y + pad * 2
+                        local centerX = bx + bw * 0.5
+
+                        if S.ESP.Box then
+                            ed.Box.Position = Vector2.new(bx, by)
+                            ed.Box.Size = Vector2.new(bw, bh)
+                            ed.Box.Color = isWhitelisted and COLOR_WHITELIST or S.ESPColors.Box
+                            ed.Box.Visible = true
+                        else
+                            ed.Box.Visible = false
+                        end
+
+                        if S.ESP.Name then
+                            ed.Name.Text = player.Name
+                            ed.Name.Position = Vector2.new(centerX, by - 18)
+                            ed.Name.Color = isWhitelisted and COLOR_WHITELIST or COLOR_DEFAULT
+                            ed.Name.Visible = true
+                        else
+                            ed.Name.Visible = false
+                        end
+
+                        if S.ESP.Distance then
+                            ed.Distance.Text = math.floor(dist + 0.5) .. "m"
+                            ed.Distance.Position = Vector2.new(centerX, by + bh + 4)
+                            ed.Distance.Visible = true
+                        else
+                            ed.Distance.Visible = false
+                        end
+
+                        if S.ESP.HealthBar then
+                            local maxHp = math.max(hum.MaxHealth, 1)
+                            local pct = math.clamp(hum.Health / maxHp, 0, 1)
+                            local barX = bx - 7
+
+                            ed.HealthBarBg.From = Vector2.new(barX, by)
+                            ed.HealthBarBg.To = Vector2.new(barX, by + bh)
+                            ed.HealthBarBg.Visible = true
+
+                            local fillTop = by + bh * (1 - pct)
+                            ed.HealthBar.From = Vector2.new(barX, by + bh)
+                            ed.HealthBar.To = Vector2.new(barX, fillTop)
+                            ed.HealthBar.Color = Color3.fromRGB(
+                                math.floor(255 - pct * 255),
+                                math.floor(pct * 255),
+                                0
+                            )
+                            ed.HealthBar.Visible = true
+
+                            ed.HealthText.Text = tostring(math.floor(hum.Health + 0.5))
+                            ed.HealthText.Position = Vector2.new(barX - 26, fillTop - 5)
+                            ed.HealthText.Color = ed.HealthBar.Color
+                            ed.HealthText.Visible = true
+                        else
+                            ed.HealthBarBg.Visible = false
+                            ed.HealthBar.Visible = false
+                            ed.HealthText.Visible = false
+                        end
+                    else
+                        -- игрок за камерой / проекция невалидна — прячем
+                        local ed = espDrawings[player]
+                        if ed then
+                            hideEspDrawings(ed)
+                        end
+                    end
+                else
+                    removeEspDrawings(player)
+                end
+            else
+                removeEspDrawings(player)
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeEspDrawings(player)
+end)
+
+-- первичное заполнение списка игроков в дропдауне
+refreshWhitelistDropdown()
+
+print("[FUST] 4/4: ESP активен. Окно открыто на экране; свернуть/развернуть — тап по логотипу.")
+
+end)
+
+if not ok then
+    warn("[FUST] ОШИБКА: " .. tostring(err))
+end
