@@ -1,24 +1,25 @@
 --[[
-    FUST Survival — FUST_FIXED V3 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V4 (VOMAGLA & Library / Avilon)
 
-    ИСПРАВЛЕНО:
-    1. ESP Box — бокс по 8 углам 3D-габарита персонажа; глубина считается через
-       Dot-произведение (у Delta WorldToViewportPoint врёт Z на дистанции — из-за
-       этого ESP пропадал дальше ~300м). Порог размера 1px — бокс/имя/дистанция
-       живут до самого MaxDistance.
-    2. Вайтлист — дропдаун с игроками + ручной ввод кнопками (Enter на Delta
-       не пробрасывается, старое поле с Finished=true не работало в принципе).
-    3. FullBright возвращает освещение при выключении.
-    4. NoDecoration — исправлен тернарный баг (декорации не скрывались).
-    5. Хитбокс восстанавливает CanCollide при выключении.
+    НОВОЕ В V4 — вайтлист под телефон:
+    • Список игроков больше НЕ дропдаун Avilon. У дропдауна варианты висели
+      на MouseButton1Down — на телефоне это срабатывало при ЛИСТАНИИ списка,
+      выбирая случайных игроков; а закрытие проверяло Mouse.X/Y, который от
+      касаний не обновляется — поэтому список сам «исчезал».
+    • Теперь свой список на .Activated: тап по игроку = добавить/убрать,
+      листание ничего не выбирает, список сам не закрывается.
+    • Ручной ввод — настоящий TextBox (Active/Selectable = true): тап по
+      полю поднимает клавиатуру; вписал ник — кнопки «+ Добавить»/«- Убрать».
 
-    НОВОЕ В V3 (если меню не открывается):
-    • Контейнеры GUI библиотеки принудительно переносятся в CoreGui
-      (запасной вариант — PlayerGui) — чинит "невидимое меню" на Delta.
-    • Безопасная выгрузка прошлого запуска перед загрузкой.
-    • Пошаговый лог в Delta Console: [FUST] 1/4 ... 4/4.
-      Если меню не появилось — открой Delta Console и посмотри,
-      на каком шаге скрипт остановился, и есть ли строка [FUST] ОШИБКА.
+    ИСПРАВЛЕНО РАНЕЕ (V2/V3):
+    1. ESP Box — бокс по 8 углам 3D-габарита; глубина через Dot-произведение
+       (у Delta WorldToViewportPoint врёт Z на дистанции — ESP пропадал за
+       ~300м). Порог размера 1px — бокс/имя/дистанция живут до MaxDistance.
+    2. FullBright возвращает освещение при выключении.
+    3. NoDecoration — исправлен тернарный баг (декорации не скрывались).
+    4. Хитбокс восстанавливает CanCollide при выключении.
+    5. GUI переносится в CoreGui (запасной вариант — PlayerGui), безопасная
+       выгрузка прошлого запуска, пошаговый лог [FUST] 1/4 ... 4/4 в консоли.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -123,8 +124,6 @@ local S = {
 }
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
-local DropdownSelected = {}  -- имена, выбранные через дропдаун
-local PendingName = ""       -- текст, введённый в поле вручную
 
 local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
 local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
@@ -301,9 +300,9 @@ RightSection:Toggle({
 })
 
 -- ============================== ВАЙТЛИСТ ================================
-
-local WhitelistDropdown
-local WhitelistBox
+-- V4: панель собрана из «сырых» Roblox-инстансов внутри секции Avilon.
+-- Все нажатия — через .Activated (честный тап: не срабатывает при
+-- протаскивании пальца и одинаково работает на телефоне и на ПК).
 
 local function normalizeName(raw)
     if type(raw) ~= "string" then
@@ -334,131 +333,281 @@ local function resolveName(raw)
     return name
 end
 
--- Синхронизирует Whitelist с выбором в дропдауне
-local function applyWhitelistFromDropdown(list)
-    local newSet = {}
-    if type(list) == "table" then
-        for _, name in ipairs(list) do
-            newSet[name] = true
-        end
-    end
+-- Цвета под тему Avilon
+local WL_BG = Color3.fromRGB(17, 18, 22)
+local WL_ROW = Color3.fromRGB(28, 39, 45)
+local WL_ACCENT = Color3.fromRGB(157, 53, 12)
+local WL_BRIGHT = Color3.fromRGB(225, 66, 6)
+local WL_TEXT = Color3.fromRGB(199, 199, 212)
+local WL_GRAY = Color3.fromRGB(117, 117, 131)
 
-    local inGame = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        inGame[plr.Name] = true
-    end
+local wlHost = RightSection.Items["Content"].Instance
 
-    -- снимаем тех, кто был выбран через дропдаун и больше не выбран
-    for name in pairs(DropdownSelected) do
-        if not newSet[name] and inGame[name] then
-            Whitelist[name] = nil
-        end
-    end
+local wlPanel = Instance.new("Frame")
+wlPanel.Name = "FustWhitelistPanel"
+wlPanel.BackgroundColor3 = WL_BG
+wlPanel.BorderSizePixel = 0
+wlPanel.Size = UDim2.new(1, 0, 0, 0)
+wlPanel.AutomaticSize = Enum.AutomaticSize.Y
+wlPanel.LayoutOrder = 100
+wlPanel.Parent = wlHost
 
-    for name in pairs(newSet) do
-        Whitelist[name] = true
-    end
-
-    DropdownSelected = newSet
+local function wlCorner(parent, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 6)
+    c.Parent = parent
+    return c
 end
 
-local function refreshWhitelistDropdown()
-    if not WhitelistDropdown then
+do
+    wlCorner(wlPanel)
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = WL_ACCENT
+    stroke.Transparency = 0.55
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = wlPanel
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 8)
+    pad.PaddingBottom = UDim.new(0, 8)
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.PaddingRight = UDim.new(0, 8)
+    pad.Parent = wlPanel
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = wlPanel
+end
+
+local function wlLabel(text, order, color, bold)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+    l.TextSize = 13
+    l.TextColor3 = color or WL_TEXT
+    l.Text = text
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Size = UDim2.new(1, 0, 0, 16)
+    l.LayoutOrder = order
+    l.Parent = wlPanel
+    return l
+end
+
+wlLabel("Вайтлист (не бьём по этим)", 1, WL_BRIGHT, true)
+wlLabel("Тап по нику в списке — вкл/выкл.", 2, WL_GRAY)
+
+local wlScroll = Instance.new("ScrollingFrame")
+wlScroll.Name = "FustWhitelistScroll"
+wlScroll.Size = UDim2.new(1, 0, 0, 150)
+wlScroll.BackgroundColor3 = WL_BG
+wlScroll.BorderSizePixel = 0
+wlScroll.ScrollBarThickness = 4
+wlScroll.ScrollBarImageColor3 = WL_ACCENT
+wlScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+wlScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+wlScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+wlScroll.LayoutOrder = 3
+wlScroll.Parent = wlPanel
+
+do
+    wlCorner(wlScroll)
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 5)
+    pad.PaddingBottom = UDim.new(0, 5)
+    pad.PaddingLeft = UDim.new(0, 5)
+    pad.PaddingRight = UDim.new(0, 6)
+    pad.Parent = wlScroll
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 4)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = wlScroll
+end
+
+local wlRows = {}
+local function clearPlayerRows()
+    for _, r in ipairs(wlRows) do
+        r:Destroy()
+    end
+    table.clear(wlRows)
+end
+
+local function applyRowStyle(row, isOn)
+    local base = row:GetAttribute("WLText") or ""
+    if isOn then
+        row.BackgroundColor3 = WL_ACCENT
+        row.TextColor3 = Color3.fromRGB(255, 255, 255)
+        row.Text = "✓ " .. base
+    else
+        row.BackgroundColor3 = WL_ROW
+        row.TextColor3 = WL_GRAY
+        row.Text = base
+    end
+end
+
+-- (пере)собирает список игроков; вызывается при входе/выходе игрока и после правок
+local function rebuildPlayerList()
+    clearPlayerRows()
+
+    local rows = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(rows, plr)
+        end
+    end
+    table.sort(rows, function(a, b)
+        return a.Name < b.Name
+    end)
+
+    if #rows == 0 then
+        local empty = Instance.new("TextLabel")
+        empty.BackgroundTransparency = 1
+        empty.Font = Enum.Font.Gotham
+        empty.TextSize = 12
+        empty.TextColor3 = WL_GRAY
+        empty.Text = "На сервере пока нет других игроков"
+        empty.Size = UDim2.new(1, 0, 0, 26)
+        empty.LayoutOrder = 1
+        empty.Parent = wlScroll
+        table.insert(wlRows, empty)
         return
     end
-    pcall(function()
-        local names = {}
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                table.insert(names, plr.Name)
+
+    for order, plr in ipairs(rows) do
+        local row = Instance.new("TextButton")
+        row.Name = "WL_" .. plr.Name
+        row.AutoButtonColor = false
+        row.Font = Enum.Font.Gotham
+        row.TextSize = 13
+        row.TextXAlignment = Enum.TextXAlignment.Left
+        row.BackgroundColor3 = WL_ROW
+        row.BorderSizePixel = 0
+        row.Size = UDim2.new(1, 0, 0, 30)
+        row.LayoutOrder = order
+        row:SetAttribute("WLText", plr.DisplayName .. " (@" .. plr.Name .. ")")
+        row.Parent = wlScroll
+        table.insert(wlRows, row)
+
+        wlCorner(row, 5)
+
+        local pad = Instance.new("UIPadding")
+        pad.PaddingLeft = UDim.new(0, 8)
+        pad.Parent = row
+
+        applyRowStyle(row, Whitelist[plr.Name] == true)
+
+        -- Activated = честный тап: при листании списка НЕ срабатывает
+        row.Activated:Connect(function()
+            if Whitelist[plr.Name] then
+                Whitelist[plr.Name] = nil
+                applyRowStyle(row, false)
+            else
+                Whitelist[plr.Name] = true
+                applyRowStyle(row, true)
             end
-        end
-        table.sort(names)
-
-        WhitelistDropdown:Refresh(names)
-
-        -- сбрасываем устаревшее состояние мульти-дропдауна
-        WhitelistDropdown.Value = {}
-        WhitelistDropdown.Items["Value"].Instance.Text = "..."
-
-        -- отмечаем тех, кто уже в вайтлисте
-        local selected = {}
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and Whitelist[plr.Name] then
-                table.insert(selected, plr.Name)
-            end
-        end
-        if #selected > 0 then
-            WhitelistDropdown:Set(selected)
-        end
-    end)
+        end)
+    end
 end
 
-WhitelistDropdown = RightSection:Dropdown({
-    Name = "Вайтлист (игроки на сервере)",
-    Flag = "WhitelistDropdown",
-    Items = {},
-    Multi = true,
-    MaxSize = 170,
-    Callback = function(list)
-        applyWhitelistFromDropdown(list)
-    end
-})
+wlLabel("Или впиши ник вручную:", 4, WL_GRAY)
 
-RightSection:Button({
-    Name = "Обновить список игроков",
-    Callback = function()
-        refreshWhitelistDropdown()
-    end
-})
+local wlInput = Instance.new("TextBox")
+wlInput.Name = "FustWhitelistInput"
+wlInput.Font = Enum.Font.Gotham
+wlInput.TextSize = 13
+wlInput.PlaceholderText = "Ник или DisplayName друга..."
+wlInput.PlaceholderColor3 = Color3.fromRGB(77, 77, 86)
+wlInput.Text = ""
+wlInput.TextColor3 = WL_TEXT
+wlInput.TextXAlignment = Enum.TextXAlignment.Left
+wlInput.ClearTextOnFocus = false
+wlInput.BackgroundColor3 = WL_BG
+wlInput.BorderSizePixel = 0
+wlInput.Size = UDim2.new(1, 0, 0, 32)
+wlInput.LayoutOrder = 5
+-- КЛЮЧЕВОЕ: Active/Selectable = true — иначе тап не доходит до поля и на
+-- телефоне не появляется клавиатура (именно поэтому поле Avilon не работало)
+wlInput.Active = true
+wlInput.Selectable = true
+wlInput.Parent = wlPanel
 
-WhitelistBox = RightSection:Textbox({
-    Name = "Вайтлист (ник вручную)",
-    Flag = "WhitelistInput",
-    Default = "",
-    Placeholder = "Введите ник...",
-    Finished = false, -- важно: с true колбэк требует Enter и не работает на Delta
-    Callback = function(text)
-        PendingName = tostring(text or "")
-    end
-})
+do
+    wlCorner(wlInput)
 
-RightSection:Button({
-    Name = "Добавить ник в вайтлист",
-    Callback = function()
-        local name = resolveName(PendingName)
-        if name then
-            Whitelist[name] = true
-            refreshWhitelistDropdown()
-        end
-        if WhitelistBox then
-            WhitelistBox:Set("")
-        end
-    end
-})
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.Parent = wlInput
+end
 
-RightSection:Button({
-    Name = "Убрать ник из вайтлиста",
-    Callback = function()
-        local name = resolveName(PendingName)
-        if name then
-            Whitelist[name] = nil
-            refreshWhitelistDropdown()
-        end
-        if WhitelistBox then
-            WhitelistBox:Set("")
-        end
+local wlButtonRow = Instance.new("Frame")
+wlButtonRow.Name = "FustWhitelistButtons"
+wlButtonRow.BackgroundTransparency = 1
+wlButtonRow.Size = UDim2.new(1, 0, 0, 32)
+wlButtonRow.LayoutOrder = 6
+wlButtonRow.Parent = wlPanel
+
+do
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = wlButtonRow
+end
+
+local function wlMakeButton(text, order, bg, fg)
+    local b = Instance.new("TextButton")
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 13
+    b.Text = text
+    b.TextColor3 = fg
+    b.BackgroundColor3 = bg
+    b.BorderSizePixel = 0
+    b.Size = UDim2.new(0.5, -3, 1, 0)
+    b.LayoutOrder = order
+    b.Parent = wlButtonRow
+    wlCorner(b, 5)
+    return b
+end
+
+local wlAdd = wlMakeButton("+ Добавить", 1, WL_ACCENT, Color3.fromRGB(255, 255, 255))
+local wlRemove = wlMakeButton("- Убрать", 2, WL_ROW, WL_TEXT)
+
+wlAdd.Activated:Connect(function()
+    local name = resolveName(wlInput.Text)
+    if name then
+        Whitelist[name] = true
+        rebuildPlayerList()
     end
-})
+    wlInput.Text = ""
+    pcall(function()
+        wlInput:ReleaseFocus()
+    end)
+end)
+
+wlRemove.Activated:Connect(function()
+    local name = resolveName(wlInput.Text)
+    if name then
+        Whitelist[name] = nil
+        rebuildPlayerList()
+    end
+    wlInput.Text = ""
+    pcall(function()
+        wlInput:ReleaseFocus()
+    end)
+end)
 
 Players.PlayerAdded:Connect(function()
-    task.defer(refreshWhitelistDropdown)
+    task.defer(rebuildPlayerList)
 end)
 
 Players.PlayerRemoving:Connect(function()
-    task.defer(refreshWhitelistDropdown)
+    task.defer(rebuildPlayerList)
 end)
 
+rebuildPlayerList()
 -- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
 
 local espDrawings = {}
@@ -729,8 +878,7 @@ Players.PlayerRemoving:Connect(function(player)
     removeEspDrawings(player)
 end)
 
--- первичное заполнение списка игроков в дропдауне
-refreshWhitelistDropdown()
+-- первичное заполнение списка игроков в вайтлисте уже сделано в панели (rebuildPlayerList)
 
 print("[FUST] 4/4: ESP активен. Окно открыто на экране; свернуть/развернуть — тап по логотипу.")
 
