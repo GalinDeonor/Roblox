@@ -1,32 +1,50 @@
 --[[
-    FUST Survival — FUST_FIXED V9 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V11 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V9 — слева три подвкладки внутри Main (сверху вниз):
-    • Main
-        Функции  — Вайтлист | Конфиги
-        Аимбот   — Аимбот   | Хитбокс + Цель
-        ESP      — ESP      | Визуалы
-    • Внутри каждой подвкладки контент в ДВЕ колонки, не столбик.
-    • Ни одна функция не удалена — всё только переехало.
+    НОВОЕ В V11 — ПОЧЕМУ СЛОМАЛИСЬ ХИТБОКСЫ И ЧАМСЫ (починено):
+    • При повторном запуске скрипта (execute без перезахода) ПРОШЛЫЙ
+      рендер-цикл (ESP/хитбоксы/чамсы) оставался висеть «зомби»: у него
+      не было ни хэндла, ни очистки. Каждый кадр зомби возвращал корням
+      старый размер (ломал хитбоксы) и глушил Highlight'ы (ломал чамсы)
+      нового запуска. ESP и аимбот продолжали работать — поэтому
+      казалось, что сломались «только хитбоксы и чамсы».
+    • Теперь на старте убивается рендер-цикл прошлого запуска
+      (getgenv().FUST_RenderCleanup): возвращаются размеры корней,
+      убирается ESP-отрисовка и чамсы прошлого запуска.
+    • Метка запуска FUST_SESSION: любой старый цикл сверяет её каждый
+      кадр и отключает сам себя, если запущен более новый скрипт.
+    • Разовая зачистка мира: корни-«кубы» (сигнатура расширителя)
+      возвращаются к стандартным 2х2х1, левые чамсы уничтожаются.
+    • Чамсы под pcall: если игра блокирует Highlight, цикл кадра не
+      умирает молча — создание отключается после первой ошибки.
+    • Одноразовый отчёт в консоль Delta: «[FUST] Хитбокс применён
+      к N игрок(ам)» — сразу видно, что цикл жив и работает.
 
-    РАНЕЕ (V2–V8):
-    1. V8 — одна вкладка со всеми секциями в две колонки.
-    2. V7 — три отдельные вкладки (Main, Аимбот, Settings).
-    3. V6 — сортировка секций + сохранение/загрузка конфига
-       (FUST_config.json в папке scripts у Delta): ESP, цвет бокса,
-       FullBright, NoDecoration, NoGrass, хитбокс, все настройки
-       аимбота и вайтлист.
-    4. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт по Z
-       в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
-    5. FullBright возвращает освещение при выключении.
-    6. NoDecoration — исправлен тернарный баг.
-    7. Хитбокс восстанавливает CanCollide при выключении.
-    8. GUI в CoreGui (запасной — PlayerGui), выгрузка прошлого запуска,
-       лог [FUST] 1/4 ... 4/4.
-    9. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
-    10. Аимбот из NERAKA: камера-лок, Smooth, Предикт (транспорт),
-        дистанция до 1500м, FOV-круг, проверка стен/команды, красный
-        прицел. V5.1: кнопки «Аим парт»/«Приоритет» на Activated.
+    ВАЖНО ДЛЯ ПЕРЕХОДА С V10: зомби-циклы старых версий из текущей
+    сессии сами отключиться не могут — один раз перезайди в игру,
+    потом запускай V11. Дальше повторные execute будут чистыми.
+
+    РАНЕЕ (V2–V10):
+    1. V10 — хитбоксы отвязаны от слайдера «Max Distance» (ESP);
+       оригинальные размеры корней запоминаются и возвращаются;
+       pcall-защита цикла; тумблер пишет «[FUST] Хитбокс ВКЛ/ВЫКЛ».
+    2. V9 — три подвкладки в Main: Функции (вайтлист+конфиги),
+       Аимбот (аим+хитбокс+цель), ESP (esp+визуалы).
+    3. V8 — одна вкладка со всеми секциями в две колонки.
+    4. V7 — три отдельные вкладки (Main, Аимбот, Settings).
+    5. V6 — конфиги (FUST_config.json): ESP, цвет, визуалы, хитбокс,
+       аимбот, вайтлист.
+    6. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт
+       по Z в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
+    7. FullBright возвращает освещение при выключении.
+    8. NoDecoration — исправлен тернарный баг.
+    9. Хитбокс восстанавливает CanCollide при выключении.
+    10. GUI в CoreGui (запасной PlayerGui), выгрузка прошлого запуска,
+        лог [FUST] 1/4 ... 4/4.
+    11. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
+    12. Аимбот: камера-лок, Smooth, Предикт (транспорт), дистанция до
+        1500м, FOV-круг, проверка стен/команды, красный прицел.
+        V5.1: кнопки «Аим парт»/«Приоритет» на Activated.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -46,6 +64,52 @@ if getgenv().Library and getgenv().Library.Exit then
     end)
     getgenv().Library = nil
 end
+
+-- V11: ГЛАВНАЯ ПРИЧИНА ПОЛОМКИ ХИТБОКСОВ И ЧАМСОВ —
+-- рендер-цикл прошлого запуска (ESP/хитбоксы/чамсы) оставался висеть
+-- ЗОМБИ: у него не было ни хэндла, ни очистки. Каждый кадр зомби
+-- возвращал корням старый размер (ломал хитбоксы) и ставил
+-- highlight.Enabled = false (ломал чамсы) у нового запуска.
+-- Теперь цикл прошлого запуска полностью убирается на старте.
+if getgenv().FUST_RenderCleanup then
+    pcall(getgenv().FUST_RenderCleanup)
+end
+getgenv().FUST_RenderCleanup = nil
+
+-- Аимбот-цикл прошлого запуска (теперь убирается сразу на старте)
+if getgenv().FUST_AimCleanup then
+    pcall(getgenv().FUST_AimCleanup)
+end
+getgenv().FUST_AimCleanup = nil
+
+-- V11: метка текущего запуска. Все циклы сверяются с ней каждый кадр:
+-- если запущен более новый скрипт, старый цикл отключает САМ себя.
+-- Страховка от зомби-циклов на будущее.
+local FUST_SESSION = {}
+getgenv().FUST_SESSION = FUST_SESSION
+
+-- V11: разовая зачистка мира от следов зомби-циклов СТАРЫХ версий:
+-- корень-«куб» (X==Y==Z, >=3) — сигнатура нашего расширителя,
+-- возвращаем к стандартным 2х2х1; левые чамсы уничтожаем.
+pcall(function()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local c = plr.Character
+        local root = c and c:FindFirstChild("HumanoidRootPart")
+        if root then
+            local s = root.Size
+            if s.X == s.Y and s.Y == s.Z and s.X >= 3 then
+                root.Size = Vector3.new(2, 2, 1)
+                root.Transparency = 1
+                root.CanCollide = true
+                root.CanQuery = true
+            end
+        end
+        local hl = c and c:FindFirstChild("VOMAGLA_Chams")
+        if hl then
+            hl:Destroy()
+        end
+    end
+end)
 
 print("[FUST] 2/4: загружаю библиотеку Avilon...")
 
@@ -182,6 +246,8 @@ local S = {
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
 
+local HitboxAnnouncePending = false  -- V11: одноразовый отчёт в консоль при включении хитбокса
+
 local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
 local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
 
@@ -271,6 +337,11 @@ UIRegistry.HitboxEnabled = HitboxSection:Toggle({
     Default = false,
     Callback = function(state)
         S.Hitbox.Enabled = state
+        if state then
+            HitboxAnnouncePending = true
+        end
+        -- диагностика: видно в консоли Delta, что тумблер реально сработал
+        print("[FUST] Хитбокс " .. (state and ("ВКЛ, размер " .. tostring(S.Hitbox.Size)) or "ВЫКЛ"))
     end
 })
 
@@ -963,6 +1034,13 @@ end
 -- ---- Главный цикл ----
 local aimConnection
 aimConnection = RunService.RenderStepped:Connect(function()
+    -- V11: защита от зомби-цикла — если запущен более новый скрипт,
+    -- этот цикл отключает сам себя
+    if getgenv().FUST_SESSION ~= FUST_SESSION then
+        aimConnection:Disconnect()
+        return
+    end
+
     local camera = Workspace.CurrentCamera
     if not camera then
         return
@@ -1214,6 +1292,8 @@ ConfigSection:Button({
 -- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
 
 local espDrawings = {}
+local hitboxOriginals = {}  -- player -> оригинальные параметры HumanoidRootPart
+local ChamsCreateBlocked = false  -- V11: если игра блокирует Highlight — не спамим созданием
 
 local function removeEspDrawings(plr)
     local ed = espDrawings[plr]
@@ -1314,7 +1394,15 @@ local function getScreenBox(camera, root)
     return Vector2.new(minX, minY), Vector2.new(maxX - minX, maxY - minY)
 end
 
-RunService.RenderStepped:Connect(function()
+local renderConnection
+renderConnection = RunService.RenderStepped:Connect(function()
+    -- V11: защита от зомби-цикла — если запущен более новый скрипт,
+    -- этот цикл отключает сам себя
+    if getgenv().FUST_SESSION ~= FUST_SESSION then
+        renderConnection:Disconnect()
+        return
+    end
+
     local Camera = Workspace.CurrentCamera
     if not Camera then
         return
@@ -1330,6 +1418,8 @@ RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
+    local hitboxAppliedCount = 0  -- V11: сколько игроков реально расширено в этом кадре
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local char = player.Character
@@ -1337,56 +1427,94 @@ RunService.RenderStepped:Connect(function()
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             local isWhitelisted = Whitelist[player.Name] == true
 
-            ---------------- Хитбоксы ----------------
+            ---------------- Хитбоксы (V10) ----------------
+            -- Работает на ЛЮБОЙ дистанции — больше НЕ зависит от
+            -- слайдера «Max Distance» (из-за этой привязки хитбоксы
+            -- молча отключались, если слайдер был сбит вниз).
             if root then
-                local defaultSize = Vector3.new(2, 2, 1)
-                local expanded = false
+                -- запоминаем оригинальные параметры корня один раз,
+                -- чтобы вернуть всё как было при выключении
+                local orig = hitboxOriginals[player]
+                if not orig or orig.Root ~= root then
+                    orig = {
+                        Root = root,
+                        Size = root.Size,
+                        Transparency = root.Transparency,
+                        CanCollide = root.CanCollide,
+                        CanQuery = root.CanQuery,
+                    }
+                    hitboxOriginals[player] = orig
+                end
 
+                local expanded = false
                 if S.Hitbox.Enabled and myRoot and not isWhitelisted then
-                    local dist = (root.Position - myRoot.Position).Magnitude
-                    if dist <= S.ESP.MaxDistance then
-                        local targetSize = Vector3.new(S.Hitbox.Size, S.Hitbox.Size, S.Hitbox.Size)
+                    expanded = true
+                    hitboxAppliedCount = hitboxAppliedCount + 1
+                    local targetSize = Vector3.new(S.Hitbox.Size, S.Hitbox.Size, S.Hitbox.Size)
+                    pcall(function()
                         if root.Size ~= targetSize then
                             root.Size = targetSize
                         end
                         root.Transparency = S.Hitbox.Transparency
                         root.CanCollide = false
-                        expanded = true
-                    end
+                        root.CanQuery = true
+                    end)
                 end
 
                 if not expanded then
-                    if root.Size ~= defaultSize then
-                        root.Size = defaultSize
-                    end
-                    root.Transparency = 1
-                    root.CanCollide = true
+                    pcall(function()
+                        if root.Size ~= orig.Size then
+                            root.Size = orig.Size
+                        end
+                        root.Transparency = orig.Transparency
+                        root.CanCollide = orig.CanCollide
+                        root.CanQuery = orig.CanQuery
+                    end)
                 end
             end
 
-            ---------------- Chams ----------------
+            ---------------- Chams (V11: pcall-защита) ----------------
             local highlight = char and char:FindFirstChild("VOMAGLA_Chams")
             if S.ESP.Enabled and S.ESP.Chams and char and root and myRoot then
                 local dist = (root.Position - myRoot.Position).Magnitude
                 if dist <= S.ESP.MaxDistance then
-                    if not highlight then
-                        highlight = Instance.new("Highlight")
-                        highlight.Name = "VOMAGLA_Chams"
-                        highlight.Adornee = char
-                        highlight.Parent = char
+                    if not highlight and not ChamsCreateBlocked then
+                        -- создание Highlight под pcall: если игра блокирует
+                        -- инстанс, цикл кадра больше не умирает молча
+                        local okH, created = pcall(function()
+                            local h = Instance.new("Highlight")
+                            h.Name = "VOMAGLA_Chams"
+                            h.Adornee = char
+                            h.Parent = char
+                            return h
+                        end)
+                        if okH and created then
+                            highlight = created
+                        else
+                            ChamsCreateBlocked = true
+                            warn("[FUST] Highlight заблокирован игрой — чамсы отключены")
+                        end
                     end
 
-                    highlight.FillColor = isWhitelisted and COLOR_WHITELIST or S.ESPColors.Box
-                    local alpha = math.clamp(0.2 + (dist / S.ESP.MaxDistance) * 0.6, 0.2, 0.8)
-                    highlight.FillTransparency = alpha
-                    highlight.OutlineTransparency = alpha * 0.5
-                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                    highlight.Enabled = true
+                    if highlight then
+                        pcall(function()
+                            highlight.FillColor = isWhitelisted and COLOR_WHITELIST or S.ESPColors.Box
+                            local alpha = math.clamp(0.2 + (dist / S.ESP.MaxDistance) * 0.6, 0.2, 0.8)
+                            highlight.FillTransparency = alpha
+                            highlight.OutlineTransparency = alpha * 0.5
+                            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                            highlight.Enabled = true
+                        end)
+                    end
                 elseif highlight then
-                    highlight.Enabled = false
+                    pcall(function()
+                        highlight.Enabled = false
+                    end)
                 end
             elseif highlight then
-                highlight.Enabled = false
+                pcall(function()
+                    highlight.Enabled = false
+                end)
             end
 
             ---------------- ESP ----------------
@@ -1475,10 +1603,55 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
+    -- V11: одноразовый отчёт — видно в консоли Delta, что цикл жив
+    -- и хитбокс реально применяется
+    if HitboxAnnouncePending then
+        HitboxAnnouncePending = false
+        print("[FUST] Хитбокс применён к " .. tostring(hitboxAppliedCount) .. " игрок(ам), размер " .. tostring(S.Hitbox.Size))
+    end
 end)
+
+-- V11: полная очистка ЭТОГО запуска — вызывается при следующем execute.
+-- Без неё прошлый цикл оставался зомби и ломал новый запуск.
+getgenv().FUST_RenderCleanup = function()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+
+    -- возвращаем хитбоксы к оригиналам
+    for _, orig in pairs(hitboxOriginals) do
+        pcall(function()
+            if orig.Root and orig.Root.Parent then
+                orig.Root.Size = orig.Size
+                orig.Root.Transparency = orig.Transparency
+                orig.Root.CanCollide = orig.CanCollide
+                orig.Root.CanQuery = orig.CanQuery
+            end
+        end)
+    end
+
+    -- убираем ESP-отрисовку этого запуска
+    for plr in pairs(espDrawings) do
+        pcall(removeEspDrawings, plr)
+    end
+
+    -- убираем чамсы этого запуска
+    pcall(function()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            local c = plr.Character
+            local hl = c and c:FindFirstChild("VOMAGLA_Chams")
+            if hl then
+                hl:Destroy()
+            end
+        end
+    end)
+end
 
 Players.PlayerRemoving:Connect(function(player)
     removeEspDrawings(player)
+    hitboxOriginals[player] = nil
 end)
 
 -- первичное заполнение списка игроков в вайтлисте уже сделано в панели (rebuildPlayerList)
