@@ -1,50 +1,49 @@
 --[[
-    FUST Survival — FUST_FIXED V11 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V14 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V11 — ПОЧЕМУ СЛОМАЛИСЬ ХИТБОКСЫ И ЧАМСЫ (починено):
-    • При повторном запуске скрипта (execute без перезахода) ПРОШЛЫЙ
-      рендер-цикл (ESP/хитбоксы/чамсы) оставался висеть «зомби»: у него
-      не было ни хэндла, ни очистки. Каждый кадр зомби возвращал корням
-      старый размер (ломал хитбоксы) и глушил Highlight'ы (ломал чамсы)
-      нового запуска. ESP и аимбот продолжали работать — поэтому
-      казалось, что сломались «только хитбоксы и чамсы».
-    • Теперь на старте убивается рендер-цикл прошлого запуска
-      (getgenv().FUST_RenderCleanup): возвращаются размеры корней,
-      убирается ESP-отрисовка и чамсы прошлого запуска.
-    • Метка запуска FUST_SESSION: любой старый цикл сверяет её каждый
-      кадр и отключает сам себя, если запущен более новый скрипт.
-    • Разовая зачистка мира: корни-«кубы» (сигнатура расширителя)
-      возвращаются к стандартным 2х2х1, левые чамсы уничтожаются.
-    • Чамсы под pcall: если игра блокирует Highlight, цикл кадра не
-      умирает молча — создание отключается после первой ошибки.
-    • Одноразовый отчёт в консоль Delta: «[FUST] Хитбокс применён
-      к N игрок(ам)» — сразу видно, что цикл жив и работает.
+    НОВОЕ В V14 — АНТИ-ОТДАЧА (БЕЗОПАСНАЯ) + ЖУРНАЛ ДЛЯ ДИАГНОСТИКИ:
+    • АНТИ-ОТДАЧА ВЕРНУЛАСЬ, но без hookmetamethod — именно перехват
+      метаметода game и был главным подозреваемым бана в V12. Теперь
+      только два прозрачных слоя, каждый — отдельный тумблер:
+      1) «АО: откат кика камеры» — снапшот поворота сразу после
+         камера-контроллера; если к концу кадра камеру резко задрало
+         вверх больше порога, а позиция на месте — поворот откатывается.
+         Это обычная запись Camera.CFrame, её и так делает аимбот;
+      2) «АО: сброс CameraOffset» — обнуление «тычка» камеры через
+         гуманоида, если игра делает отдачу так.
+      «АО: порог кика» (градусы): подними, если при резком взгляде
+      вверх камера «подлипает»; опусти, если отдача проскакивает.
+      Включай слои по одному — так же ищется виновник, если что-то
+      из этого детектится.
+    • ЖУРНАЛ ДЛЯ БАНА («понять за что»): каждое включение/выключение
+      фичи и снимок состояния раз в минуту пишутся в консоль и в файл
+      FUST_journal.txt (папка scripts у Delta, рядом с конфигом).
+      Словил бан → открой журнал: последние строки перед обрывом
+      показывают, что было включено в момент бана; по всей истории
+      видно, что висело дольше всего. Файл сам обрезается после 256 КБ.
+      Ориентир риска: аимбот и хитбокс — ВЫСОКИЙ; анти-отдача —
+      СРЕДНИЙ; чамсы, ESP, визуалы — НИЗКИЙ.
+    • КАК ИСКАТЬ ВИНОВНИКА БАНА: 1) открой FUST_journal.txt; 2) посмотри
+      последние 5–10 минут перед обрывом; 3) в следующей сессии включи
+      только половину подозреваемых — и сужай круг, пока не останется
+      один. Менять по одной фиче за сессию — самый быстрый путь.
 
-    ВАЖНО ДЛЯ ПЕРЕХОДА С V10: зомби-циклы старых версий из текущей
-    сессии сами отключиться не могут — один раз перезайди в игру,
-    потом запускай V11. Дальше повторные execute будут чистыми.
-
-    РАНЕЕ (V2–V10):
-    1. V10 — хитбоксы отвязаны от слайдера «Max Distance» (ESP);
-       оригинальные размеры корней запоминаются и возвращаются;
-       pcall-защита цикла; тумблер пишет «[FUST] Хитбокс ВКЛ/ВЫКЛ».
-    2. V9 — три подвкладки в Main: Функции (вайтлист+конфиги),
-       Аимбот (аим+хитбокс+цель), ESP (esp+визуалы).
-    3. V8 — одна вкладка со всеми секциями в две колонки.
-    4. V7 — три отдельные вкладки (Main, Аимбот, Settings).
-    5. V6 — конфиги (FUST_config.json): ESP, цвет, визуалы, хитбокс,
-       аимбот, вайтлист.
-    6. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт
-       по Z в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
-    7. FullBright возвращает освещение при выключении.
-    8. NoDecoration — исправлен тернарный баг.
-    9. Хитбокс восстанавливает CanCollide при выключении.
-    10. GUI в CoreGui (запасной PlayerGui), выгрузка прошлого запуска,
-        лог [FUST] 1/4 ... 4/4.
-    11. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
-    12. Аимбот: камера-лок, Smooth, Предикт (транспорт), дистанция до
-        1500м, FOV-круг, проверка стен/команды, красный прицел.
-        V5.1: кнопки «Аим парт»/«Приоритет» на Activated.
+    РАНЕЕ (V2–V13):
+    1. V13 — слайдеры прозрачности хитбокса и чамсов (отдельно),
+       чамсы хитбокса (свой Highlight на кубе).
+    2. V12 — отозвана: анти-отдача через hookmetamethod — бан-риск.
+    3. V11 — починены хитбоксы и чамсы (зомби-рендер-цикл при
+       повторном execute; FUST_RenderCleanup + метка FUST_SESSION).
+    4. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
+    5. V9 — три подвкладки в Main: Функции, Аимбот, ESP.
+    6. V8 — одна вкладка, секции в две колонки.
+    7. V7 — три вкладки (Main, Аимбот, Settings).
+    8. V6 — конфиги FUST_config.json.
+    9. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
+    10. FullBright / NoDecoration / NoGrass с возвратом состояния.
+    11. Вайтлист — своя панель, TextBox с клавиатурой.
+    12. Аимбот: камера-лок, Smooth, предикт, FOV-круг, стены/команда.
+    13. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -108,8 +107,47 @@ pcall(function()
         if hl then
             hl:Destroy()
         end
+        local rhl = root and root:FindFirstChild("VOMAGLA_HitboxChams")
+        if rhl then
+            rhl:Destroy()
+        end
     end
 end)
+
+-- ============ ЖУРНАЛ ДЛЯ ДИАГНОСТИКИ БАНОВ (V14) ============
+-- «Лазейка», чтобы понять, ЗА ЧТО забанили: каждое включение/выключение
+-- фичи и снимок состояния раз в минуту пишутся в консоль И в файл
+-- FUST_journal.txt (лежит в папке scripts у Delta, рядом с конфигом).
+-- Словил бан → открой журнал: последние строки перед обрывом показывают,
+-- что было включено в момент бана. Ориентир по риску: аимбот и хитбокс —
+-- ВЫСОКИЙ, анти-отдача — СРЕДНИЙ, чамсы/ESP/визуалы — НИЗКИЙ.
+local JOURNAL_FILE = "FUST_journal.txt"
+
+-- журнал не должен расти бесконечно: больше 256 КБ — начинаем заново
+pcall(function()
+    if type(isfile) == "function" and isfile(JOURNAL_FILE) then
+        if #readfile(JOURNAL_FILE) > 262144 then
+            writefile(JOURNAL_FILE, "")
+        end
+    end
+end)
+
+local function journal(msg)
+    local okDate, stamp = pcall(os.date, "%d.%m %H:%M:%S")
+    if okDate and stamp then
+        stamp = stamp .. " "
+    else
+        stamp = ""
+    end
+    print("[FUST-J] " .. stamp .. msg)
+    if type(appendfile) == "function" then
+        pcall(function()
+            appendfile(JOURNAL_FILE, stamp .. msg .. "\n")
+        end)
+    end
+end
+
+journal("=== ЗАПУСК v14 | place " .. tostring(game.PlaceId) .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: загружаю библиотеку Avilon...")
 
@@ -230,6 +268,7 @@ local S = {
         Enabled = false,
         Box = false,
         Chams = false,
+        ChamsTransparency = 0.5,
         Name = false,
         Distance = false,
         HealthBar = false,
@@ -248,6 +287,18 @@ local Whitelist = {}         -- имя игрока -> true (общий вайт
 
 local HitboxAnnouncePending = false  -- V11: одноразовый отчёт в консоль при включении хитбокса
 
+-- V14: анти-отдача — БЕЗ hookmetamethod (перехват метаметода game и был
+-- главным бан-риском в V12). Осталось два прозрачных слоя, каждый —
+-- отдельный тумблер, чтобы можно было понять, какой слой как влияет.
+local AntiRecoil = {
+    Enabled = false,    -- общий выключатель
+    Rollback = true,    -- слой 1: откат резкого кика камеры вверх (конец кадра)
+    Offset = true,      -- слой 2: сброс Humanoid.CameraOffset («тычок» камеры)
+    Threshold = 1.2,    -- от какого угла (градусы) считать кик отдачей
+}
+local AR_SnapCF = nil          -- снапшот поворота камеры после камера-контроллера
+local AR_LastStateJournal = 0  -- когда в последний раз писали снимок в журнал
+
 local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
 local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
 
@@ -259,6 +310,7 @@ UIRegistry.ESPEnabled = EspSection:Toggle({
     Default = false,
     Callback = function(state)
         S.ESP.Enabled = state
+        journal("ESP " .. (state and "ВКЛ" or "ВЫКЛ"))
     end
 })
 
@@ -286,6 +338,21 @@ UIRegistry.ESPChams = EspSection:Toggle({
     Default = false,
     Callback = function(state)
         S.ESP.Chams = state
+        journal("ЧАМСЫ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+-- V13: прозрачность заливки чамсов (0 — плотная, 1 — только контур)
+UIRegistry.ESPChamsTransparency = EspSection:Slider({
+    Name = "Прозрачность чамсов",
+    Flag = "ESPChamsTransparency",
+    Default = 0.5,
+    Min = 0,
+    Max = 1,
+    Decimals = 0.05,
+    Suffix = "",
+    Callback = function(Value)
+        S.ESP.ChamsTransparency = Value
     end
 })
 
@@ -342,6 +409,7 @@ UIRegistry.HitboxEnabled = HitboxSection:Toggle({
         end
         -- диагностика: видно в консоли Delta, что тумблер реально сработал
         print("[FUST] Хитбокс " .. (state and ("ВКЛ, размер " .. tostring(S.Hitbox.Size)) or "ВЫКЛ"))
+        journal("ХИТБОКС " .. (state and ("ВКЛ (размер " .. tostring(S.Hitbox.Size) .. ")") or "ВЫКЛ"))
     end
 })
 
@@ -358,6 +426,21 @@ UIRegistry.HitboxSize = HitboxSection:Slider({
     end
 })
 
+-- V13: прозрачность самого куба хитбокса (0 — непрозрачный, 0.95 — призрак;
+-- при 1 Highlight куба перестаёт рисоваться, поэтому максимум 0.95)
+UIRegistry.HitboxTransparency = HitboxSection:Slider({
+    Name = "Hitbox Transparency",
+    Flag = "HitboxTransparency",
+    Default = 0.7,
+    Min = 0,
+    Max = 0.95,
+    Decimals = 0.05,
+    Suffix = "",
+    Callback = function(Value)
+        S.Hitbox.Transparency = Value
+    end
+})
+
 local FullBrightBackup = nil
 
 UIRegistry.FullBright = VisualSection:Toggle({
@@ -366,6 +449,7 @@ UIRegistry.FullBright = VisualSection:Toggle({
     Default = false,
     Callback = function(state)
         S.FullBright = state
+        journal("FULLBRIGHT " .. (state and "ВКЛ" or "ВЫКЛ"))
         if state then
             -- запоминаем исходное освещение
             FullBrightBackup = {
@@ -391,6 +475,7 @@ UIRegistry.NoDecoration = VisualSection:Toggle({
     Default = false,
     Callback = function(state)
         S.NoDecoration = state
+        journal("НОДЕКОРАЦИИ " .. (state and "ВКЛ" or "ВЫКЛ"))
         pcall(function()
             local decor = Workspace:FindFirstChild("Decorations") or Workspace:FindFirstChild("TerrainDecorations")
             if decor then
@@ -410,6 +495,7 @@ UIRegistry.NoGrass = VisualSection:Toggle({
     Default = false,
     Callback = function(state)
         S.NoGrass = state
+        journal("НОТРАВА " .. (state and "ВКЛ" or "ВЫКЛ"))
         coroutine.wrap(pcall)(function()
             local terrain = Workspace:FindFirstChildOfClass("Terrain")
             if not terrain then
@@ -766,6 +852,7 @@ UIRegistry.AimEnabled = AimSection:Toggle({
     Default = false,
     Callback = function(state)
         Aim.Enabled = state
+        journal("АИМБОТ " .. (state and "ВКЛ" or "ВЫКЛ"))
     end
 })
 
@@ -855,6 +942,101 @@ UIRegistry.AimPrediction = AimSection:Slider({
         Aim.Prediction = Value
     end
 })
+
+-- ============ АНТИ-ОТДАЧА (V14 — безопасная версия) ============
+-- В V12 бан-риск давал hookmetamethod. Здесь его НЕТ: только запись
+-- Camera.CFrame (её и так делает аимбот) и сброс CameraOffset.
+-- Слои разделены: включай по одному и смотри, что даёт эффект.
+
+UIRegistry.AntiRecoilEnabled = AimSection:Toggle({
+    Name = "Анти-отдача",
+    Flag = "AntiRecoilEnabled",
+    Default = false,
+    Callback = function(state)
+        AntiRecoil.Enabled = state
+        journal("АНТИ-ОТДАЧА " .. (state and "ВКЛ" or "ВЫКЛ"))
+        print("[FUST] Анти-отдача " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiRecoilRollback = AimSection:Toggle({
+    Name = "АО: откат кика камеры",
+    Flag = "AntiRecoilRollback",
+    Default = true,
+    Callback = function(state)
+        AntiRecoil.Rollback = state
+        journal("АО откат-камеры " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiRecoilOffset = AimSection:Toggle({
+    Name = "АО: сброс CameraOffset",
+    Flag = "AntiRecoilOffset",
+    Default = true,
+    Callback = function(state)
+        AntiRecoil.Offset = state
+        journal("АО cameraoffset " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiRecoilThreshold = AimSection:Slider({
+    Name = "АО: порог кика",
+    Flag = "AntiRecoilThreshold",
+    Default = 1.2,
+    Min = 0.3,
+    Max = 5,
+    Decimals = 0.1,
+    Suffix = "°",
+    Callback = function(Value)
+        AntiRecoil.Threshold = Value
+    end
+})
+
+-- Слой 1: снапшот поворота камеры сразу после камера-контроллера
+-- (вклад мышки уже учтён), откат кика — в самом конце кадра.
+-- Зомби-защита: при повторном execute шаг сам отвязывается по FUST_SESSION.
+pcall(function()
+    RunService:UnbindFromRenderStep("FUST_AR_Snap")
+    RunService:UnbindFromRenderStep("FUST_AR_Restore")
+end)
+
+RunService:BindToRenderStep("FUST_AR_Snap", Enum.RenderPriority.Camera.Value + 1, function()
+    if getgenv().FUST_SESSION ~= FUST_SESSION then
+        RunService:UnbindFromRenderStep("FUST_AR_Snap")
+        return
+    end
+    if not (AntiRecoil.Enabled and AntiRecoil.Rollback) then
+        return
+    end
+    local camera = Workspace.CurrentCamera
+    if camera then
+        AR_SnapCF = camera.CFrame
+    end
+end)
+
+RunService:BindToRenderStep("FUST_AR_Restore", Enum.RenderPriority.Last.Value + 1, function()
+    if getgenv().FUST_SESSION ~= FUST_SESSION then
+        RunService:UnbindFromRenderStep("FUST_AR_Restore")
+        return
+    end
+    if not (AntiRecoil.Enabled and AntiRecoil.Rollback) then
+        return
+    end
+    local camera = Workspace.CurrentCamera
+    if not (camera and AR_SnapCF) then
+        return
+    end
+    pcall(function()
+        local cur = camera.CFrame
+        -- отдача = камеру резко задрало ВВЕРХ за один кадр,
+        -- позиция при этом почти на месте
+        local dPos = (cur.Position - AR_SnapCF.Position).Magnitude
+        local dUp = cur.LookVector.Y - AR_SnapCF.LookVector.Y
+        if dPos < 1 and dUp > math.rad(AntiRecoil.Threshold) then
+            camera.CFrame = CFrame.new(cur.Position) * AR_SnapCF.Rotation
+        end
+    end)
+end)
 
 -- V5.1: кнопки-циклы сделаны на «сырых» инстансах (как панель вайтлиста):
 -- у кнопок Avilon на телефоне надпись после нажатия не обновлялась.
@@ -1118,6 +1300,7 @@ local function saveConfig()
                 Enabled = S.ESP.Enabled,
                 Box = S.ESP.Box,
                 Chams = S.ESP.Chams,
+                ChamsTransparency = S.ESP.ChamsTransparency,
                 Name = S.ESP.Name,
                 Distance = S.ESP.Distance,
                 HealthBar = S.ESP.HealthBar,
@@ -1145,9 +1328,16 @@ local function saveConfig()
                 TeamCheck = Aim.TeamCheck,
                 Crosshair = Aim.Crosshair,
             },
+            AntiRecoil = {
+                Enabled = AntiRecoil.Enabled,
+                Rollback = AntiRecoil.Rollback,
+                Offset = AntiRecoil.Offset,
+                Threshold = AntiRecoil.Threshold,
+            },
             Whitelist = wl,
         }
         writefile(CONFIG_FILE, HttpService:JSONEncode(cfg))
+        journal("КОНФИГ СОХРАНЁН")
     end)
     return okFile, err
 end
@@ -1175,6 +1365,7 @@ local function loadConfig()
             applyFlag("ESPEnabled", cfg.ESP.Enabled)
             applyFlag("ESPBox", cfg.ESP.Box)
             applyFlag("ESPChams", cfg.ESP.Chams)
+            applyFlag("ESPChamsTransparency", cfg.ESP.ChamsTransparency)
             applyFlag("ESPName", cfg.ESP.Name)
             applyFlag("ESPDistance", cfg.ESP.Distance)
             applyFlag("ESPHealthBar", cfg.ESP.HealthBar)
@@ -1194,14 +1385,19 @@ local function loadConfig()
         if type(cfg.Hitbox) == "table" then
             applyFlag("HitboxEnabled", cfg.Hitbox.Enabled)
             applyFlag("HitboxSize", cfg.Hitbox.Size)
-            if cfg.Hitbox.Transparency then
-                S.Hitbox.Transparency = tonumber(cfg.Hitbox.Transparency) or S.Hitbox.Transparency
-            end
+            applyFlag("HitboxTransparency", cfg.Hitbox.Transparency)
         end
 
         applyFlag("FullBright", cfg.FullBright)
         applyFlag("NoDecoration", cfg.NoDecoration)
         applyFlag("NoGrass", cfg.NoGrass)
+
+        if type(cfg.AntiRecoil) == "table" then
+            applyFlag("AntiRecoilEnabled", cfg.AntiRecoil.Enabled)
+            applyFlag("AntiRecoilRollback", cfg.AntiRecoil.Rollback)
+            applyFlag("AntiRecoilOffset", cfg.AntiRecoil.Offset)
+            applyFlag("AntiRecoilThreshold", cfg.AntiRecoil.Threshold)
+        end
 
         if type(cfg.Aim) == "table" then
             local a = cfg.Aim
@@ -1418,6 +1614,39 @@ renderConnection = RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
+    -- V14: анти-отдача, слой 2 — сброс CameraOffset («тычок» камеры
+    -- через гуманоида, если игра делает отдачу так)
+    if AntiRecoil.Enabled and AntiRecoil.Offset and myChar then
+        local myHum = myChar:FindFirstChildOfClass("Humanoid")
+        if myHum and myHum.CameraOffset.Magnitude > 0 then
+            myHum.CameraOffset = Vector3.new(0, 0, 0)
+        end
+    end
+
+    -- V14: раз в минуту снимок состояния в журнал — если словишь бан,
+    -- последние строки журнала покажут, что было включено в этот момент
+    local jnow = os.clock()
+    if jnow - AR_LastStateJournal > 60 then
+        AR_LastStateJournal = jnow
+        pcall(function()
+            journal(string.format(
+                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d) фб=%d нг=%d нд=%d",
+                Aim.Enabled and 1 or 0,
+                tostring(Aim.Part),
+                tostring(Aim.Priority),
+                S.Hitbox.Enabled and 1 or 0,
+                S.ESP.Enabled and 1 or 0,
+                S.ESP.Chams and 1 or 0,
+                AntiRecoil.Enabled and 1 or 0,
+                AntiRecoil.Rollback and 1 or 0,
+                AntiRecoil.Offset and 1 or 0,
+                S.FullBright and 1 or 0,
+                S.NoGrass and 1 or 0,
+                S.NoDecoration and 1 or 0
+            ))
+        end)
+    end
+
     local hitboxAppliedCount = 0  -- V11: сколько игроков реально расширено в этом кадре
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -1473,8 +1702,9 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 end
             end
 
-            ---------------- Chams (V11: pcall-защита) ----------------
+            ---------------- Chams (V11: pcall-защита) + чамсы хитбокса (V13) ----------------
             local highlight = char and char:FindFirstChild("VOMAGLA_Chams")
+            local hbHighlight = root and root:FindFirstChild("VOMAGLA_HitboxChams")
             if S.ESP.Enabled and S.ESP.Chams and char and root and myRoot then
                 local dist = (root.Position - myRoot.Position).Magnitude
                 if dist <= S.ESP.MaxDistance then
@@ -1499,22 +1729,81 @@ renderConnection = RunService.RenderStepped:Connect(function()
                     if highlight then
                         pcall(function()
                             highlight.FillColor = isWhitelisted and COLOR_WHITELIST or S.ESPColors.Box
-                            local alpha = math.clamp(0.2 + (dist / S.ESP.MaxDistance) * 0.6, 0.2, 0.8)
+                            -- V13: прозрачность чамсов задаётся слайдером
+                            -- (раньше считалась автоматически от дистанции)
+                            local alpha = math.clamp(S.ESP.ChamsTransparency, 0, 1)
                             highlight.FillTransparency = alpha
                             highlight.OutlineTransparency = alpha * 0.5
                             highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                             highlight.Enabled = true
                         end)
                     end
-                elseif highlight then
+
+                    -- V13: ЧАМСЫ ХИТБОКСА — свой Highlight на расширенном корне:
+                    -- контур куба цветом ESP + призрачная заливка (прозрачнее
+                    -- тела на 0.2), тело игрока светится внутри куба,
+                    -- всё видно сквозь стены (AlwaysOnTop).
+                    if S.Hitbox.Enabled and not isWhitelisted then
+                        if not hbHighlight and not ChamsCreateBlocked then
+                            local okHB, createdHB = pcall(function()
+                                local h = Instance.new("Highlight")
+                                h.Name = "VOMAGLA_HitboxChams"
+                                h.Adornee = root
+                                h.Parent = root
+                                return h
+                            end)
+                            if okHB and createdHB then
+                                hbHighlight = createdHB
+                            else
+                                ChamsCreateBlocked = true
+                                warn("[FUST] Highlight заблокирован игрой — чамсы хитбокса отключены")
+                            end
+                        end
+
+                        if hbHighlight then
+                            pcall(function()
+                                local alphaHB = math.clamp(S.ESP.ChamsTransparency + 0.2, 0, 1)
+                                hbHighlight.FillColor = S.ESPColors.Box
+                                hbHighlight.OutlineColor = S.ESPColors.Box
+                                hbHighlight.FillTransparency = alphaHB
+                                hbHighlight.OutlineTransparency = math.clamp(S.ESP.ChamsTransparency * 0.5, 0, 1)
+                                hbHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                                hbHighlight.Enabled = true
+                            end)
+                        end
+                    elseif hbHighlight then
+                        pcall(function()
+                            hbHighlight:Destroy()
+                        end)
+                        hbHighlight = nil
+                    end
+                else
+                    -- вне дистанции: чамсы игрока гасим, чамсы хитбокса убираем
+                    if highlight then
+                        pcall(function()
+                            highlight.Enabled = false
+                        end)
+                    end
+                    if hbHighlight then
+                        pcall(function()
+                            hbHighlight:Destroy()
+                        end)
+                        hbHighlight = nil
+                    end
+                end
+            else
+                -- чамсы выключены: чамсы игрока гасим, чамсы хитбокса убираем
+                if highlight then
                     pcall(function()
                         highlight.Enabled = false
                     end)
                 end
-            elseif highlight then
-                pcall(function()
-                    highlight.Enabled = false
-                end)
+                if hbHighlight then
+                    pcall(function()
+                        hbHighlight:Destroy()
+                    end)
+                    hbHighlight = nil
+                end
             end
 
             ---------------- ESP ----------------
@@ -1620,6 +1909,15 @@ getgenv().FUST_RenderCleanup = function()
         renderConnection = nil
     end
 
+    -- V14: отвязываем шаги анти-отдачи и фиксируем выгрузку в журнал
+    pcall(function()
+        RunService:UnbindFromRenderStep("FUST_AR_Snap")
+        RunService:UnbindFromRenderStep("FUST_AR_Restore")
+    end)
+    pcall(function()
+        journal("ВЫГРУЗКА: перезапуск скрипта — старые циклы и чамсы убраны")
+    end)
+
     -- возвращаем хитбоксы к оригиналам
     for _, orig in pairs(hitboxOriginals) do
         pcall(function()
@@ -1644,6 +1942,11 @@ getgenv().FUST_RenderCleanup = function()
             local hl = c and c:FindFirstChild("VOMAGLA_Chams")
             if hl then
                 hl:Destroy()
+            end
+            local r = c and c:FindFirstChild("HumanoidRootPart")
+            local rhl = r and r:FindFirstChild("VOMAGLA_HitboxChams")
+            if rhl then
+                rhl:Destroy()
             end
         end
     end)
