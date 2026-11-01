@@ -1,43 +1,29 @@
 --[[
-    FUST Survival — FUST_FIXED V14 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V15 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V14 — АНТИ-ОТДАЧА (БЕЗОПАСНАЯ) + ЖУРНАЛ ДЛЯ ДИАГНОСТИКИ:
-    • АНТИ-ОТДАЧА ВЕРНУЛАСЬ, но без hookmetamethod — именно перехват
-      метаметода game и был главным подозреваемым бана в V12. Теперь
-      только два прозрачных слоя, каждый — отдельный тумблер:
-      1) «АО: откат кика камеры» — снапшот поворота сразу после
-         камера-контроллера; если к концу кадра камеру резко задрало
-         вверх больше порога, а позиция на месте — поворот откатывается.
-         Это обычная запись Camera.CFrame, её и так делает аимбот;
-      2) «АО: сброс CameraOffset» — обнуление «тычка» камеры через
-         гуманоида, если игра делает отдачу так.
-      «АО: порог кика» (градусы): подними, если при резком взгляде
-      вверх камера «подлипает»; опусти, если отдача проскакивает.
-      Включай слои по одному — так же ищется виновник, если что-то
-      из этого детектится.
-    • ЖУРНАЛ ДЛЯ БАНА («понять за что»): каждое включение/выключение
-      фичи и снимок состояния раз в минуту пишутся в консоль и в файл
-      FUST_journal.txt (папка scripts у Delta, рядом с конфигом).
-      Словил бан → открой журнал: последние строки перед обрывом
-      показывают, что было включено в момент бана; по всей истории
-      видно, что висело дольше всего. Файл сам обрезается после 256 КБ.
-      Ориентир риска: аимбот и хитбокс — ВЫСОКИЙ; анти-отдача —
-      СРЕДНИЙ; чамсы, ESP, визуалы — НИЗКИЙ.
-    • КАК ИСКАТЬ ВИНОВНИКА БАНА: 1) открой FUST_journal.txt; 2) посмотри
-      последние 5–10 минут перед обрывом; 3) в следующей сессии включи
-      только половину подозреваемых — и сужай круг, пока не останется
-      один. Менять по одной фиче за сессию — самый быстрый путь.
+    НОВОЕ В V15 — ESP ПРЕДМЕТ (что в руках):
+    • Тумблер «ESP Предмет (что в руках)» в секции ESP: под боксом
+      игрока жёлтым пишется название предмета, который он держит
+      (Tool из персонажа). Если включена дистанция — предмет пишется
+      строкой ниже; если выключена — сразу под боксом.
+    • Фича чисто визуальная и безопасная: только ЧТЕНИЕ Tool из
+      чужого персонажа + текст Drawing API на экране. В игру не
+      пишется ничего — риск как у ESP имени/дистанции.
+    • Сохраняется в конфиг, пишется в журнал (ПРЕДМЕТ ВКЛ/ВЫКЛ).
 
-    РАНЕЕ (V2–V13):
-    1. V13 — слайдеры прозрачности хитбокса и чамсов (отдельно),
+    РАНЕЕ (V2–V14):
+    1. V14 — безопасная анти-отдача (БЕЗ hookmetamethod: откат кика
+       камеры + сброс CameraOffset, отдельные тумблеры, порог кика)
+       + журнал FUST_journal.txt для диагностики банов (каждый тумблер
+       и снимок раз в минуту — при бане видно, что было включено).
+    2. V13 — слайдеры прозрачности хитбокса и чамсов (отдельно),
        чамсы хитбокса (свой Highlight на кубе).
-    2. V12 — отозвана: анти-отдача через hookmetamethod — бан-риск.
-    3. V11 — починены хитбоксы и чамсы (зомби-рендер-цикл при
+    3. V12 — отозвана: анти-отдача через hookmetamethod — бан-риск.
+    4. V11 — починены хитбоксы и чамсы (зомби-рендер-цикл при
        повторном execute; FUST_RenderCleanup + метка FUST_SESSION).
-    4. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
-    5. V9 — три подвкладки в Main: Функции, Аимбот, ESP.
-    6. V8 — одна вкладка, секции в две колонки.
-    7. V7 — три вкладки (Main, Аимбот, Settings).
+    5. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
+    6. V9 — три подвкладки в Main: Функции, Аимбот, ESP.
+    7. V8 — одна вкладка, секции в две колонки; V7 — три вкладки.
     8. V6 — конфиги FUST_config.json.
     9. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
     10. FullBright / NoDecoration / NoGrass с возвратом состояния.
@@ -270,6 +256,7 @@ local S = {
         Chams = false,
         ChamsTransparency = 0.5,
         Name = false,
+        Item = false,
         Distance = false,
         HealthBar = false,
         MaxDistance = 1500,
@@ -371,6 +358,17 @@ UIRegistry.ESPDistance = EspSection:Toggle({
     Default = false,
     Callback = function(state)
         S.ESP.Distance = state
+    end
+})
+
+-- V15: показывает, какой предмет игрок держит в руках
+UIRegistry.ESPItem = EspSection:Toggle({
+    Name = "ESP Предмет (что в руках)",
+    Flag = "ESPItem",
+    Default = false,
+    Callback = function(state)
+        S.ESP.Item = state
+        journal("ПРЕДМЕТ " .. (state and "ВКЛ" or "ВЫКЛ"))
     end
 })
 
@@ -1302,6 +1300,7 @@ local function saveConfig()
                 Chams = S.ESP.Chams,
                 ChamsTransparency = S.ESP.ChamsTransparency,
                 Name = S.ESP.Name,
+                Item = S.ESP.Item,
                 Distance = S.ESP.Distance,
                 HealthBar = S.ESP.HealthBar,
                 MaxDistance = S.ESP.MaxDistance,
@@ -1367,6 +1366,7 @@ local function loadConfig()
             applyFlag("ESPChams", cfg.ESP.Chams)
             applyFlag("ESPChamsTransparency", cfg.ESP.ChamsTransparency)
             applyFlag("ESPName", cfg.ESP.Name)
+            applyFlag("ESPItem", cfg.ESP.Item)
             applyFlag("ESPDistance", cfg.ESP.Distance)
             applyFlag("ESPHealthBar", cfg.ESP.HealthBar)
             applyFlag("ESPMaxDistance", cfg.ESP.MaxDistance)
@@ -1510,6 +1510,7 @@ local function ensureEspDrawings(plr)
             Box = Drawing.new("Square"),
             Name = Drawing.new("Text"),
             Distance = Drawing.new("Text"),
+            Item = Drawing.new("Text"),
             HealthBarBg = Drawing.new("Line"),
             HealthBar = Drawing.new("Line"),
             HealthText = Drawing.new("Text"),
@@ -1518,7 +1519,7 @@ local function ensureEspDrawings(plr)
         ed.Box.Filled = false
         ed.Box.Thickness = 1
 
-        for _, key in ipairs({ "Name", "Distance", "HealthText" }) do
+        for _, key in ipairs({ "Name", "Distance", "HealthText", "Item" }) do
             ed[key].Center = true
             ed[key].Outline = true
             ed[key].Font = Drawing.Fonts.Plex
@@ -1527,6 +1528,7 @@ local function ensureEspDrawings(plr)
         ed.Distance.Size = 13
         ed.HealthText.Size = 11
         ed.HealthText.Center = false
+        ed.Item.Size = 12
 
         ed.HealthBarBg.Thickness = 3
         ed.HealthBarBg.Color = Color3.fromRGB(0, 0, 0)
@@ -1541,6 +1543,7 @@ local function hideEspDrawings(ed)
     ed.Box.Visible = false
     ed.Name.Visible = false
     ed.Distance.Visible = false
+    ed.Item.Visible = false
     ed.HealthBarBg.Visible = false
     ed.HealthBar.Visible = false
     ed.HealthText.Visible = false
@@ -1847,6 +1850,27 @@ renderConnection = RunService.RenderStepped:Connect(function()
                             ed.Distance.Visible = true
                         else
                             ed.Distance.Visible = false
+                        end
+
+                        -- V15: предмет в руках (Tool, надетый на персонажа) —
+                        -- только чтение, в игру ничего не пишем
+                        if S.ESP.Item then
+                            local okTool, tool = pcall(function()
+                                return char:FindFirstChildOfClass("Tool")
+                            end)
+                            if okTool and tool then
+                                -- если дистанция включена — пишем строкой ниже неё,
+                                -- иначе сразу под боксом
+                                local itemY = by + bh + (S.ESP.Distance and 23 or 4)
+                                ed.Item.Text = tool.Name
+                                ed.Item.Position = Vector2.new(centerX, itemY)
+                                ed.Item.Color = isWhitelisted and COLOR_WHITELIST or Color3.fromRGB(255, 215, 90)
+                                ed.Item.Visible = true
+                            else
+                                ed.Item.Visible = false
+                            end
+                        else
+                            ed.Item.Visible = false
                         end
 
                         if S.ESP.HealthBar then
