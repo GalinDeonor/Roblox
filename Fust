@@ -1,31 +1,32 @@
 --[[
-    FUST Survival — FUST_FIXED V8 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V9 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V8 — одна вкладка Main, всё внутри в две колонки:
-    • Слева ОДНА вкладка «Main» — никаких трёх вкладок с одним пунктом.
-    • Внутри вкладки всё разложено в ДВЕ колонки (Side = 1 — левая,
-      Side = 2 — правая), не в один столбик:
-      Левая колонка:  ESP → Визуалы → Вайтлист
-      Правая колонка: Аимбот → Хитбокс → Цель (парт/приоритет) → Конфиги
+    НОВОЕ В V9 — слева три подвкладки внутри Main (сверху вниз):
+    • Main
+        Функции  — Вайтлист | Конфиги
+        Аимбот   — Аимбот   | Хитбокс + Цель
+        ESP      — ESP      | Визуалы
+    • Внутри каждой подвкладки контент в ДВЕ колонки, не столбик.
     • Ни одна функция не удалена — всё только переехало.
 
-    РАНЕЕ (V2–V7):
-    1. V7 — три вкладки (Main, Аимбот, Settings) — убрано, всё в Main.
-    2. V6 — сортировка секций + сохранение/загрузка конфига
+    РАНЕЕ (V2–V8):
+    1. V8 — одна вкладка со всеми секциями в две колонки.
+    2. V7 — три отдельные вкладки (Main, Аимбот, Settings).
+    3. V6 — сортировка секций + сохранение/загрузка конфига
        (FUST_config.json в папке scripts у Delta): ESP, цвет бокса,
        FullBright, NoDecoration, NoGrass, хитбокс, все настройки
        аимбота и вайтлист.
-    3. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт по Z
+    4. ESP Box — 8 углов 3D-габарита; глубина через Dot (Delta врёт по Z
        в WorldToViewportPoint — ESP пропадал за ~300м). Порог 1px.
-    4. FullBright возвращает освещение при выключении.
-    5. NoDecoration — исправлен тернарный баг.
-    6. Хитбокс восстанавливает CanCollide при выключении.
-    7. GUI в CoreGui (запасной — PlayerGui), выгрузка прошлого запуска,
+    5. FullBright возвращает освещение при выключении.
+    6. NoDecoration — исправлен тернарный баг.
+    7. Хитбокс восстанавливает CanCollide при выключении.
+    8. GUI в CoreGui (запасной — PlayerGui), выгрузка прошлого запуска,
        лог [FUST] 1/4 ... 4/4.
-    8. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
-    9. Аимбот из NERAKA: камера-лок, Smooth, Предикт (транспорт),
-       дистанция до 1500м, FOV-круг, проверка стен/команды, красный
-       прицел. V5.1: кнопки «Аим парт»/«Приоритет» на Activated.
+    9. Вайтлист — своя панель на .Activated + TextBox с клавиатурой.
+    10. Аимбот из NERAKA: камера-лок, Smooth, Предикт (транспорт),
+        дистанция до 1500м, FOV-круг, проверка стен/команды, красный
+        прицел. V5.1: кнопки «Аим парт»/«Приоритет» на Activated.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -90,55 +91,68 @@ local MainPage = Window:Page({
     Icon = "rbxassetid://102973834692853"
 })
 
--- V8: одна вкладка «Main», все секции внутри неё
-local MainSubPage = MainPage:SubPage({
+-- V9: три подвкладки внутри Main, порядок в меню сверху вниз:
+-- Функции → Аимбот → ESP
+local FuncSubPage = MainPage:SubPage({
     Name = "Функции",
-    Description = "Полный функционал читов",
+    Description = "Вайтлист и конфиги",
     Icon = "rbxassetid://102973834692853"
 })
 
--- V8: две колонки: Side = 1 — левая (ESP → Визуалы → Вайтлист),
--- Side = 2 — правая (Аимбот → Хитбокс → Цель → Конфиги).
--- Порядок создания секций = порядок на экране внутри колонки.
-local EspSection = MainSubPage:Section({
+local AimSubPage = MainPage:SubPage({
+    Name = "Аимбот",
+    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
+    Icon = "rbxassetid://102973834692853"
+})
+
+local EspSubPage = MainPage:SubPage({
     Name = "ESP",
-    Description = "Функции ESP",
-    Side = 1
+    Description = "Подсветка игроков и окружение",
+    Icon = "rbxassetid://102973834692853"
 })
 
-local VisualSection = MainSubPage:Section({
-    Name = "Визуалы",
-    Description = "Освещение и окружение",
-    Side = 1
-})
-
-local MiscSection = MainSubPage:Section({
+-- Подвкладка «Функции»: Вайтлист (лево) | Конфиги (право)
+local MiscSection = FuncSubPage:Section({
     Name = "Вайтлист",
     Description = "По этим игрокам не бьём",
     Side = 1
 })
 
-local AimSection = MainSubPage:Section({
-    Name = "Аимбот",
-    Description = "Камера-лок, предикт, прицел. Вайтлист игнорируется",
+local ConfigSection = FuncSubPage:Section({
+    Name = "Конфиги",
+    Description = "Сохранение всех настроек",
     Side = 2
 })
 
-local HitboxSection = MainSubPage:Section({
+-- Подвкладка «Аимбот»: Аимбот (лево) | Хитбокс + Цель (право)
+local AimSection = AimSubPage:Section({
+    Name = "Аимбот",
+    Description = "Прицел, упреждение, проверки",
+    Side = 1
+})
+
+local HitboxSection = AimSubPage:Section({
     Name = "Хитбокс",
     Description = "Расширение хитбоксов игроков",
     Side = 2
 })
 
-local TargetSection = MainSubPage:Section({
+local TargetSection = AimSubPage:Section({
     Name = "Цель",
     Description = "Куда целиться и кого выбирать",
     Side = 2
 })
 
-local ConfigSection = MainSubPage:Section({
-    Name = "Конфиги",
-    Description = "Сохранение всех настроек",
+-- Подвкладка «ESP»: ESP (лево) | Визуалы (право)
+local EspSection = EspSubPage:Section({
+    Name = "ESP",
+    Description = "Функции ESP",
+    Side = 1
+})
+
+local VisualSection = EspSubPage:Section({
+    Name = "Визуалы",
+    Description = "Освещение и окружение",
     Side = 2
 })
 
