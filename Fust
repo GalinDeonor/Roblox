@@ -1,9 +1,55 @@
 --[[
-    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.27
+    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.29
     Скрипт сделан на основе скрипта VOMAGLA (подход к трассерам
     пуль и ESP взят оттуда, спасибо автору VOMAGLA).
 
-    НОВОЕ В 0.27 — КАТЕГОРИИ НПС: ОХРАННИКИ / МИРНЫЕ / ЖИВОТНЫЕ /
+    НОВОЕ В 0.29 — ESP РЮКЗАКОВ С ЛУТОМ (добыча убитых игроков):
+    • Рюкзак, который остаётся после смерти игрока, подсвечивается
+      ТЁМНО-ЗЕЛЁНЫМ: рамка по габариту, чей лут, сколько слотов
+      забито и дистанция. Новая вкладка «Лут» на странице ESP.
+    • «ЧЕЙ ЛУТ» читаем из подписи самой игры: рюкзаки почти всегда
+      подписаны (ProximityPrompt «Обыскать», атрибуты Owner/Player).
+      Если в подписи есть ник игрока с сервера — показываем ник,
+      иначе подпись целиком («Рюкзак Ванюши»). Только чтение.
+    • «СКОЛЬКО СЛОТОВ ЗАБИТО»: читаем атрибуты рюкзака (UsedSlots/
+      Slots/ItemCount…) и содержимое. Если игра отдаёт «занято/всего»
+      — покажет «12/24»; если только число предметов — «N предм.»;
+      если ничего не нашли — «слоты ??». Включи «Диагностику» во
+      вкладке «Лут» и пришли лог — поправлю паттерны под игру.
+    • Рюкзаки ищутся фоновым сканом раз в секунду + мгновенно через
+      DescendantAdded; ищем по именам (Рюкзак/Backpack/Сумка/Труп…),
+      по подписи-промпту и по тегам игры (FustBackpack и т.п.).
+    • БАН-БЕЗОПАСНОСТЬ: как весь остальной ESP — только чтение мира
+      (имена/атрибуты/подписи) и Drawing у себя на клиенте. В игру
+      ничего не летит, никаких хуков и перехватов.
+
+    НОВОЕ В 0.28 — АИМ ПО КАТЕГОРИЯМ + HUD + МАСШТАБ ESP + ПОЛЗУНКИ:
+    • АИМ БОЛЬШЕ НЕ АГРИТСЯ НА СПЯЩИХ: цели аима теперь по категориям.
+      Мультидропдаун «Кого аимить»: Игроки / Боты и НПС (охранники и
+      мирные) / Животные / Слиперы. Животные и слиперы по умолчанию
+      ВЫКЛ — включаются вручную, если понадобятся.
+    • ХИТБОКСЫ НПС ТОЖЕ ПО КАТЕГОРИЯМ: на странице «Боты и НПС» два
+      новых тумблера «Хитбокс: животные» и «Хитбокс: слиперы» (по
+      умолчанию ВЫКЛ). Спящим телам больше не раздувает хитбоксы,
+      пока сам не включишь. Охранники и мирные — как раньше.
+    • ПОЛЗУНКИ ПОЧИНЕНЫ (было «местами банально не видно»): дорожка
+      слайдера растягивалась UIFlexItem'ом в одной строке с названием
+      и значением — в узких секциях flex схлопывался в 0px. Теперь
+      слайдер двухстрочный: сверху название и значение, снизу дорожка
+      во всю ширину секции. Схлопнуться больше нечему.
+    • ВЕСЬ ESP РЕАГИРУЕТ НА ДИСТАНЦИЮ: чем дальше игрок/НПС, тем мельче
+      его бокс, текст, хелсбар и обводка (в пределах читаемого с
+      телефона минимума). Тумблер «Сжатие ESP по дистанции» в секции
+      ESP возвращает старый фиксированный размер.
+    • МИКРО-HUD НА ЭКРАНЕ: FPS, пинг, ТПС сервера, число игроков.
+      Секция «HUD на экране» (страница ESP): вкл/выкл, размер текста,
+      прозрачность фона и текста, угол экрана, показ ТПС и фона.
+      Панелька перетаскивается пальцем, маленькая и полупрозрачная.
+      ТПС считается ЛОКАЛЬНО по workspace:GetServerTimeNow() — это
+      чтение синхронизированных часов, никаких запросов в игру,
+      бан-риска нет (как у ESP). Если сервер лагает — ТПС это покажет.
+
+    РАНЕЕ (0.27) — КАТЕГОРИИ НПС: ОХРАННИКИ / МИРНЫЕ / ЖИВОТНЫЕ /
     СЛИПЕРЫ (ESP больше не помечает всех подряд):
     • Раньше «ESP ботов» выделял ЛЮБОГО НПС. Теперь каждый НПС попадает
       ровно в ОДНУ категорию — ESP не пересекаются, у каждой свой цвет:
@@ -88,8 +134,9 @@
     • Всё прежнее работает: ESP, чамсы, хитбоксы, аимбот, анти-отдача,
       анти-тряска, трассеры пуль (стили луча), No Fog, FullBright.
 
-    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, ... (прошлые
-    обозначения V2–V21 сохранены в истории ниже).
+    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29,
+    ...
+    (прошлые обозначения V2–V21 сохранены в истории ниже).
 
     РАНЕЕ (V2–0.22):
     1. 0.22 — стиль луча трассеров: дропдаун с 6 текстурами VOMAGLA
@@ -117,7 +164,7 @@
     20. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
-print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.27...")
+print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.29...")
 
 local ok, err = pcall(function()
 
@@ -237,7 +284,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК 0.27 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК 0.29 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: инициализирую встроенную библиотеку...")
 
@@ -3489,38 +3536,77 @@ UserSubtitle.TextColor3 = Library.Theme.Text
             }
 
             local Items = { } do
+                -- 0.28: ДВЕ СТРОКИ вместо одной. Раньше дорожка ползунка
+                -- растягивалась UIFlexItem'ом (Fill) в одной строке с
+                -- названием и значением: в узких секциях на телефоне flex
+                -- схлопывался в 0px и «ползунка банально не видно». Теперь
+                -- сверху название и значение, снизу дорожка ВО ВСЮ ШИРИНУ
+                -- секции — схлопнуться больше нечему, попасть пальцем
+                -- легче (дорожка стала 7px вместо 5px).
                 Items["Slider"] = Instances:Create("Frame", {
                     Parent = Slider.Section.Items["Content"].Instance,
                     Name = "\0",
                     BackgroundTransparency = 1,
                     BorderColor3 = FromRGB(0, 0, 0),
-                    Size = UDim2New(1, 0, 0, 20),
+                    Size = UDim2New(1, 0, 0, 32),
                     BorderSizePixel = 0
                 })
 
                 Instances:Create("UIListLayout", {
                     Parent = Items["Slider"].Instance,
                     Name = "\0",
-                    FillDirection = Enum.FillDirection.Horizontal,
+                    FillDirection = Enum.FillDirection.Vertical,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = UDimNew(0, 8),
+                    Padding = UDimNew(0, 4),
                     SortOrder = Enum.SortOrder.LayoutOrder
                 })
 
-                Items["Text"] = Instances:Create("TextLabel", {
+                Items["Header"] = Instances:Create("Frame", {
                     Parent = Items["Slider"].Instance,
+                    Name = "\0",
+                    BackgroundTransparency = 1,
+                    BorderColor3 = FromRGB(0, 0, 0),
+                    Size = UDim2New(1, 0, 0, 15),
+                    BorderSizePixel = 0,
+                    LayoutOrder = 1
+                })
+
+                Items["Text"] = Instances:Create("TextLabel", {
+                    Parent = Items["Header"].Instance,
                     Name = "\0",
                     FontFace = Library.Font,
                     TextColor3 = Library.Theme["Text"],
                     BorderColor3 = FromRGB(0, 0, 0),
                     Text = Slider.Name,
-                    Size = UDim2New(0, 0, 0, 15),
+                    Size = UDim2New(1, -56, 0, 15),
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
-                    LayoutOrder = 1,
-                    AutomaticSize = Enum.AutomaticSize.X,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
                     TextSize = 14
                 }):AddToTheme({TextColor3 = 'Text'})
+
+                Items["Value"] = Instances:Create("TextLabel", {
+                    Parent = Items["Header"].Instance,
+                    Name = "\0",
+                    FontFace = Library.Font,
+                    TextColor3 = Library.Theme["Text"],
+                    Text = "50%",
+                    Size = UDim2New(0, 48, 0, 15),
+                    AnchorPoint = Vector2New(1, 0),
+                    Position = UDim2New(1, 0, 0, 0),
+                    BorderSizePixel = 0,
+                    BackgroundColor3 = Library.Theme["Element"],
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    TextTruncate = Enum.TextTruncate.AtEnd,
+                    TextSize = 12
+                }):AddToTheme({BackgroundColor3 = 'Element', TextColor3 = 'Text'})
+
+                Instances:Create("UICorner", {
+                    Parent = Items["Value"].Instance,
+                    Name = "\0",
+                    CornerRadius = UDimNew(0, 6)
+                })
 
                 Items["RealSlider"] = Instances:Create("TextButton", {
                     Parent = Items["Slider"].Instance,
@@ -3529,16 +3615,12 @@ UserSubtitle.TextColor3 = Library.Theme.Text
                     BorderColor3 = FromRGB(0, 0, 0),
                     Text = "",
                     AutoButtonColor = false,
-                    Size = UDim2New(0, 0, 0, 5),
+                    Size = UDim2New(1, 0, 0, 7),
                     Selectable = false,
                     BorderSizePixel = 0,
                     LayoutOrder = 2,
                     BackgroundColor3 = Library.Theme["Element"]
                 }):AddToTheme({BackgroundColor3 = 'Element'})
-
-                local SliderFlex = Instance.new("UIFlexItem")
-                SliderFlex.FlexMode = Enum.UIFlexMode.Fill
-                SliderFlex.Parent = Items["RealSlider"].Instance
 
                 Instances:Create("UICorner", {
                     Parent = Items["RealSlider"].Instance,
@@ -3617,27 +3699,6 @@ UserSubtitle.TextColor3 = Library.Theme.Text
                     BorderSizePixel = 0,
                     SliceCenter = RectNew(Vector2New(21, 21), Vector2New(79, 79))
                 }):AddToTheme({ImageColor3 = 'Accent'})
-
-                Items["Value"] = Instances:Create("TextLabel", {
-                    Parent = Items["Slider"].Instance,
-                    Name = "\0",
-                    FontFace = Library.Font,
-                    TextColor3 = Library.Theme["Text"],
-                    Text = "50%",
-                    Size = UDim2New(0, 48, 0, 18),
-                    BorderSizePixel = 0,
-                    BackgroundColor3 = Library.Theme["Element"],
-                    LayoutOrder = 3,
-                    TextXAlignment = Enum.TextXAlignment.Center,
-                    TextTruncate = Enum.TextTruncate.AtEnd,
-                    TextSize = 12
-                }):AddToTheme({BackgroundColor3 = 'Element', TextColor3 = 'Text'})
-
-                Instances:Create("UICorner", {
-                    Parent = Items["Value"].Instance,
-                    Name = "\0",
-                    CornerRadius = UDimNew(0, 6)
-                })
             end
 
             table.insert(Library.SearchRows, {Frame = Items["Slider"].Instance, Text = StringLower(Slider.Name), Page = Slider.Page})
@@ -5185,6 +5246,8 @@ local EspPage = Window:Page({ Name = "ESP", Icon = ICON_VISUALS })
 -- «ESP»: ESP (лево) | Визуалы (право)
 local EspSection = EspPage:Section({ Name = "ESP", Tab = "ESP", Side = 1 })
 local VisualSection = EspPage:Section({ Name = "Визуалы", Tab = "ESP", Side = 2 })
+-- 0.29: рюкзаки с лутом — отдельная вкладка «Лут» на странице ESP
+local LootSection = EspPage:Section({ Name = "Рюкзаки (лут)", Tab = "Лут", Side = 1 })
 
 -- Реестр элементов для сохранения/загрузки конфига (Flag -> объект)
 local UIRegistry = {}
@@ -5202,6 +5265,7 @@ local S = {
         Distance = false,
         HealthBar = false,
         MaxDistance = 1500,
+        DistanceScale = true, -- 0.28: ESP сжимается с дистанцией
     },
     ESPColors = {
         Box = Color3.fromRGB(0, 255, 255),
@@ -5232,8 +5296,35 @@ local S = {
         HitboxEnabled = false,
         HitboxSize = 9,
         HitboxTransparency = 0.7,
+        HitboxAnimals = false,  -- 0.28: хитбоксы животных (по умолчанию ВЫКЛ)
+        HitboxSleepers = false, -- 0.28: хитбоксы слиперов (по умолчанию ВЫКЛ)
+    },
+    -- 0.28: микро-HUD на экране (FPS / пинг / ТПС / игроки)
+    HUD = {
+        Enabled = true,
+        Size = 11,             -- размер шрифта (слайдер)
+        BgTransparency = 0.35, -- прозрачность фона панельки
+        TextTransparency = 0,  -- прозрачность текста
+        Corner = "Лево-низ",   -- стартовый угол (потом можно таскать)
+        ShowTPS = true,        -- строка ТПС (можно спрятать)
+        ShowBg = true,         -- фон панельки
+    },
+    -- 0.29: рюкзаки с лутом (добыча убитых игроков)
+    Loot = {
+        Enabled = false,
+        Owner = true,     -- чей лут (из подписи игры)
+        Slots = true,     -- сколько слотов забито
+        Distance = true,
+        Box = true,
+        MaxDistance = 1500,
+        DebugLog = false, -- диагностика: лог рюкзаков в консоль
     },
 }
+
+-- 0.29: цвет рюкзаков с лутом — тёмно-зелёный, меняется колорпикером
+-- на вкладке ESP → «Лут». Объявлен заранее: колбэк UI и модуль рюкза-
+-- ков ниже должны использовать ОДНУ переменную.
+local LOOT_COLOR = Color3.fromRGB(0, 105, 45)
 
 -- ============ 0.27: КЛАССИФИКАТОР НПС (категории) ============
 -- Один НПС попадает РОВНО В ОДНУ категорию — ESP не пересекаются.
@@ -5663,6 +5754,481 @@ UIRegistry.ESPMaxDistance = EspSection:Slider({
     end
 })
 
+-- 0.28: ESP реагирует на дистанцию — чем дальше цель, тем мельче её бокс,
+-- текст и хелсбар (до читаемого с телефона минимума). Можно выключить,
+-- если хочется одинаковый размер всегда.
+UIRegistry.ESPDistanceScale = EspSection:Toggle({
+    Name = "Сжатие ESP по дистанции (дальше = мельче)",
+    Flag = "ESPDistanceScale",
+    Default = true,
+    Callback = function(state)
+        S.ESP.DistanceScale = state
+        journal("ESP СЖАТИЕ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+
+-- ============ 0.28: МИКРО-HUD НА ЭКРАНЕ (FPS / ПИНГ / ТПС / ИГРОКИ) ====
+-- Маленькая полупрозрачная панелька в углу экрана: FPS клиента, пинг до
+-- сервера, ТПС сервера и число игроков. Перетаскивается пальцем, прячется
+-- в угол дропдауном, размер и прозрачность — слайдерами. С телефона не
+-- мешает: шрифт 8-16, фон настраивается, панельку можно вообще убрать.
+-- ТПС считается ЛОКАЛЬНО по workspace:GetServerTimeNow(): серверное
+-- время тикает вместе с симуляцией сервера — сервер лагает, время ползёт
+-- медленнее реального. Это обычное ЧТЕНИЕ синхронизированных часов
+-- (то же, что делает игра каждый кадр), никаких запросов и ремоутов —
+-- бан-риска нет, того же класса, что и ESP.
+local HudSection = EspPage:Section({ Name = "HUD на экране", Tab = "ESP", Side = 2 })
+
+local hudGui = nil        -- ScreenGui
+local hudFrame = nil      -- панелька
+local hudStroke = nil
+local hudLineFPS, hudLinePing, hudLineTPS, hudLinePlayers = nil, nil, nil, nil
+local hudConns = {}       -- коннекты циклов (чистятся при выключении)
+local hudDragging = false
+local hudDragStart, hudFrameStart = nil, nil
+
+local HUD_MARGIN = 12
+
+local function hudSnap(corner)
+    if not hudFrame then
+        return
+    end
+    local ax = (corner and string.find(corner, "Право", 1, true)) and 1 or 0
+    local ay = (corner and string.find(corner, "верх", 1, true)) and 0 or 1
+    -- у правого/верхнего угла оффсеты ОТРИЦАТЕЛЬНЫЕ, иначе панель
+    -- уезжает за границу экрана на размер отступа
+    local ox = (ax == 1) and -HUD_MARGIN or HUD_MARGIN
+    local oy = (ay == 1) and -HUD_MARGIN or HUD_MARGIN
+    hudFrame.AnchorPoint = Vector2.new(ax, ay)
+    hudFrame.Position = UDim2.new(ax, ox, ay, oy)
+end
+
+local function hudApplyStyle()
+    if not hudFrame then
+        return
+    end
+    local size = math.clamp(math.floor((S.HUD.Size or 11) + 0.5), 8, 16)
+    local textT = math.clamp(S.HUD.TextTransparency or 0, 0, 0.9)
+    for _, line in ipairs({ hudLineFPS, hudLinePing, hudLineTPS, hudLinePlayers }) do
+        if line then
+            line.TextSize = size
+            line.TextTransparency = textT
+        end
+    end
+    local bg = math.clamp(S.HUD.BgTransparency or 0.35, 0, 0.95)
+    if S.HUD.ShowBg then
+        hudFrame.BackgroundTransparency = bg
+        if hudStroke then
+            hudStroke.Transparency = math.clamp(bg + 0.25, 0, 1)
+        end
+    else
+        hudFrame.BackgroundTransparency = 1
+        if hudStroke then
+            hudStroke.Transparency = 1
+        end
+    end
+    if hudLineTPS then
+        hudLineTPS.Visible = S.HUD.ShowTPS and true or false
+    end
+end
+
+local function hudDestroy()
+    for _, c in ipairs(hudConns) do
+        pcall(function()
+            c:Disconnect()
+        end)
+    end
+    hudConns = {}
+    if hudGui then
+        pcall(function()
+            hudGui:Destroy()
+        end)
+    end
+    hudGui = nil
+    hudFrame = nil
+    hudStroke = nil
+    hudLineFPS, hudLinePing, hudLineTPS, hudLinePlayers = nil, nil, nil, nil
+    hudDragging = false
+end
+
+local function hudEnsure()
+    if hudFrame then
+        return
+    end
+
+    local okGui = pcall(function()
+        local parentGui = (type(gethui) == "function") and gethui() or game:GetService("CoreGui")
+        hudGui = Instance.new("ScreenGui")
+        hudGui.Name = "PetuhHUD"
+        hudGui.ResetOnSpawn = false
+        hudGui.IgnoreGuiInset = true
+        hudGui.DisplayOrder = 9999
+        hudGui.Parent = parentGui
+
+        hudFrame = Instance.new("Frame")
+        hudFrame.Name = "Panel"
+        hudFrame.Active = true
+        hudFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+        hudFrame.BorderSizePixel = 0
+        hudFrame.AutomaticSize = Enum.AutomaticSize.XY
+        hudFrame.Size = UDim2.new(0, 0, 0, 0)
+        hudFrame.Parent = hudGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = hudFrame
+
+        hudStroke = Instance.new("UIStroke")
+        hudStroke.Color = Color3.fromRGB(255, 170, 40)
+        hudStroke.Transparency = 0.6
+        hudStroke.Parent = hudFrame
+
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Vertical
+        layout.Padding = UDim.new(0, 2)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = hudFrame
+
+        local pad = Instance.new("UIPadding")
+        pad.PaddingTop = UDim.new(0, 6)
+        pad.PaddingBottom = UDim.new(0, 6)
+        pad.PaddingLeft = UDim.new(0, 9)
+        pad.PaddingRight = UDim.new(0, 9)
+        pad.Parent = hudFrame
+
+        local order = 0
+        local function makeLine(text)
+            order = order + 1
+            local label = Instance.new("TextLabel")
+            label.Name = "L" .. order
+            label.BackgroundTransparency = 1
+            label.Font = Enum.Font.Code
+            label.Text = text
+            label.TextColor3 = Color3.fromRGB(235, 235, 240)
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.AutomaticSize = Enum.AutomaticSize.XY
+            label.Size = UDim2.new(0, 0, 0, 0)
+            label.LayoutOrder = order
+            label.Parent = hudFrame
+            return label
+        end
+
+        hudLineFPS = makeLine("FPS —")
+        hudLinePing = makeLine("Пинг —")
+        hudLineTPS = makeLine("ТПС —")
+        hudLinePlayers = makeLine("Игроки —")
+    end)
+
+    if not okGui or not hudFrame then
+        warn("[FUST] HUD не создался в этом экзекуторе")
+        hudDestroy()
+        return
+    end
+
+    hudSnap(S.HUD.Corner)
+    hudApplyStyle()
+
+    -- перетаскивание пальцем/мышью (дельты — не зависят от GuiInset)
+    hudFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            hudDragging = true
+            hudDragStart = input.Position
+            -- на время драга якорь левый-верх: позиция считается в оффсетах
+            local topLeft = hudFrame.AbsolutePosition
+            hudFrame.AnchorPoint = Vector2.new(0, 0)
+            hudFrameStart = Vector2.new(topLeft.X, topLeft.Y)
+            hudFrame.Position = UDim2.fromOffset(topLeft.X, topLeft.Y)
+            -- урок 0.26: хвост драга закрываем ВСЕГДА (End и Cancel) —
+            -- иначе «застрявший» драг таскает панель от любого касания
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End
+                    or input.UserInputState == Enum.UserInputState.Cancel then
+                    hudDragging = false
+                end
+            end)
+        end
+    end)
+
+    hudFrame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            hudDragging = false
+        end
+    end)
+
+    table.insert(hudConns, UserInputService.InputChanged:Connect(function(input)
+        if not hudDragging then
+            return
+        end
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+            if hudDragStart and hudFrameStart and hudFrame then
+                local cam = Workspace.CurrentCamera
+                local view = cam and cam.ViewportSize or Vector2.new(1280, 720)
+                local w = hudFrame.AbsoluteSize.X
+                local h = hudFrame.AbsoluteSize.Y
+                local nx = math.clamp(hudFrameStart.X + (input.Position.X - hudDragStart.X), 0, math.max(view.X - w, 0))
+                local ny = math.clamp(hudFrameStart.Y + (input.Position.Y - hudDragStart.Y), 0, math.max(view.Y - h, 0))
+                hudFrame.Position = UDim2.fromOffset(nx, ny)
+            end
+        end
+    end))
+
+    -- метрики: FPS — кадры за секунду; ТПС — дрейф серверного времени
+    -- за реальную секунду (окно ~1с, сглаживание); текст — раз в 0.35с
+    local frames = 0
+    local fpsAccum = 0
+    local fpsValue = 0
+    local lastServerT = nil
+    local lastRealT = nil
+    local tpsEMA = nil
+    local uiAccum = 0
+
+    table.insert(hudConns, RunService.RenderStepped:Connect(function(dt)
+        frames = frames + 1
+        fpsAccum = fpsAccum + dt
+        if fpsAccum >= 1 then
+            fpsValue = math.floor(frames / fpsAccum + 0.5)
+            frames = 0
+            fpsAccum = 0
+        end
+
+        local okT, serverT = pcall(function()
+            return Workspace:GetServerTimeNow()
+        end)
+        if okT and type(serverT) == "number" then
+            if lastServerT and lastRealT then
+                local dReal = os.clock() - lastRealT
+                if dReal >= 1 then
+                    local dServer = serverT - lastServerT
+                    local tps = dServer / dReal
+                    if tps >= 0 and tps <= 61 then
+                        tpsEMA = tpsEMA and (tpsEMA * 0.6 + tps * 0.4) or tps
+                    end
+                    lastServerT = serverT
+                    lastRealT = os.clock()
+                end
+            else
+                lastServerT = serverT
+                lastRealT = os.clock()
+            end
+        end
+
+        uiAccum = uiAccum + dt
+        if uiAccum >= 0.35 then
+            uiAccum = 0
+            if hudLineFPS then
+                hudLineFPS.Text = "FPS " .. tostring(fpsValue)
+            end
+            if hudLinePing then
+                local okP, ping = pcall(function()
+                    return LocalPlayer:GetNetworkPing()
+                end)
+                if okP and type(ping) == "number" then
+                    hudLinePing.Text = "Пинг " .. tostring(math.floor(ping * 1000 + 0.5)) .. "мс"
+                else
+                    hudLinePing.Text = "Пинг —"
+                end
+            end
+            if hudLineTPS then
+                hudLineTPS.Text = tpsEMA and ("ТПС " .. string.format("%.1f", tpsEMA)) or "ТПС —"
+            end
+            if hudLinePlayers then
+                local n = #Players:GetPlayers()
+                local maxP = 0
+                pcall(function()
+                    maxP = Players.MaxPlayers or 0
+                end)
+                if maxP and maxP > 0 then
+                    hudLinePlayers.Text = "Игроки " .. tostring(n) .. "/" .. tostring(maxP)
+                else
+                    hudLinePlayers.Text = "Игроки " .. tostring(n)
+                end
+            end
+        end
+    end))
+end
+
+-- ---- Настройки HUD в секции «HUD на экране» ----
+UIRegistry.HUDEnabled = HudSection:Toggle({
+    Name = "Микро-HUD (FPS, пинг, ТПС, игроки)",
+    Flag = "HUDEnabled",
+    Default = true,
+    Callback = function(state)
+        S.HUD.Enabled = state
+        if state then
+            hudEnsure()
+            journal("HUD ВКЛ")
+        else
+            hudDestroy()
+            journal("HUD ВЫКЛ")
+        end
+    end
+})
+
+UIRegistry.HUDSize = HudSection:Slider({
+    Name = "Размер текста HUD",
+    Flag = "HUDSize",
+    Default = 11,
+    Min = 8,
+    Max = 16,
+    Decimals = 1,
+    Callback = function(Value)
+        S.HUD.Size = Value
+        hudApplyStyle()
+    end
+})
+
+UIRegistry.HUDBgTransparency = HudSection:Slider({
+    Name = "Прозрачность фона HUD",
+    Flag = "HUDBgTransparency",
+    Default = 0.35,
+    Min = 0,
+    Max = 0.95,
+    Decimals = 0.05,
+    Callback = function(Value)
+        S.HUD.BgTransparency = Value
+        hudApplyStyle()
+    end
+})
+
+UIRegistry.HUDTextTransparency = HudSection:Slider({
+    Name = "Прозрачность текста HUD",
+    Flag = "HUDTextTransparency",
+    Default = 0,
+    Min = 0,
+    Max = 0.9,
+    Decimals = 0.05,
+    Callback = function(Value)
+        S.HUD.TextTransparency = Value
+        hudApplyStyle()
+    end
+})
+
+UIRegistry.HUDCorner = HudSection:Dropdown({
+    Name = "Угол экрана",
+    Items = { "Лево-низ", "Право-низ", "Лево-верх", "Право-верх" },
+    Default = "Лево-низ",
+    Flag = "HUDCorner",
+    Callback = function(Value)
+        S.HUD.Corner = Value
+        hudSnap(Value)
+        journal("HUD УГОЛ " .. tostring(Value))
+    end
+})
+
+UIRegistry.HUDShowTPS = HudSection:Toggle({
+    Name = "Показывать ТПС сервера",
+    Flag = "HUDShowTPS",
+    Default = true,
+    Callback = function(state)
+        S.HUD.ShowTPS = state
+        hudApplyStyle()
+    end
+})
+
+UIRegistry.HUDShowBg = HudSection:Toggle({
+    Name = "Фон панельки",
+    Flag = "HUDShowBg",
+    Default = true,
+    Callback = function(state)
+        S.HUD.ShowBg = state
+        hudApplyStyle()
+    end
+})
+
+-- HUD включён по умолчанию: панелька появляется сразу (угол — лево-низ)
+if S.HUD.Enabled then
+    task.defer(function()
+        pcall(hudEnsure)
+    end)
+end
+
+getgenv().FUST_HUDCleanup = hudDestroy
+
+-- ============ 0.29: РЮКЗАКИ С ЛУТОМ — вкладка «Лут» страницы ESP ======
+UIRegistry.LootEnabled = LootSection:Toggle({
+    Name = "ESP рюкзаков с лутом",
+    Flag = "LootEnabled",
+    Default = false,
+    Callback = function(state)
+        S.Loot.Enabled = state
+        journal("ESP РЮКЗАКОВ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.LootColor = UIRegistry.LootEnabled:Colorpicker({
+    Flag = "LootColor",
+    Default = LOOT_COLOR,
+    Callback = function(color)
+        LOOT_COLOR = color
+    end
+})
+
+UIRegistry.LootOwner = LootSection:Toggle({
+    Name = "Чей лут (из подписи игры)",
+    Flag = "LootOwner",
+    Default = true,
+    Callback = function(state)
+        S.Loot.Owner = state
+    end
+})
+
+UIRegistry.LootSlots = LootSection:Toggle({
+    Name = "Сколько слотов забито",
+    Flag = "LootSlots",
+    Default = true,
+    Callback = function(state)
+        S.Loot.Slots = state
+    end
+})
+
+UIRegistry.LootDistance = LootSection:Toggle({
+    Name = "Дистанция",
+    Flag = "LootDistance",
+    Default = true,
+    Callback = function(state)
+        S.Loot.Distance = state
+    end
+})
+
+UIRegistry.LootBox = LootSection:Toggle({
+    Name = "Рамка вокруг рюкзака",
+    Flag = "LootBox",
+    Default = true,
+    Callback = function(state)
+        S.Loot.Box = state
+    end
+})
+
+UIRegistry.LootMaxDistance = LootSection:Slider({
+    Name = "Рюкзаки: Max Distance",
+    Flag = "LootMaxDistance",
+    Default = 1500,
+    Min = 100,
+    Max = 3000,
+    Decimals = 50,
+    Suffix = "m",
+    Callback = function(Value)
+        S.Loot.MaxDistance = Value
+    end
+})
+
+UIRegistry.LootDebugLog = LootSection:Toggle({
+    Name = "Диагностика: лог рюкзаков в консоль (раз в 10 сек)",
+    Flag = "LootDebugLog",
+    Default = false,
+    Callback = function(state)
+        S.Loot.DebugLog = state
+        if state then
+            print("[FUST] Диагностика рюкзаков: имена, атрибуты, подписи и содержимое пойдут в консоль")
+            journal("ДИАГНОСТИКА РЮКЗАКОВ ВКЛ")
+        end
+    end
+})
+
 -- ============ 0.26: СТРАНИЦА «БОТЫ И НПС» ============
 -- Боты и НПС — неигровые персонажи (модели с Humanoid вне списка
 -- игроков). 0.27 — КАТЕГОРИИ: охранники (оранжевый), мирные НПС
@@ -5885,6 +6451,29 @@ UIRegistry.NPCHitboxTransparency = BotHitSection:Slider({
     Suffix = "",
     Callback = function(Value)
         S.NPC.HitboxTransparency = Value
+    end
+})
+
+-- 0.28: хитбоксы НПС по категориям. Охранники и мирные расширяются как
+-- раньше, животные и слиперы — только если включить их тумблер. Спящие
+-- тела игроков больше не раздуваются по умолчанию.
+UIRegistry.NPCHitboxAnimals = BotHitSection:Toggle({
+    Name = "Хитбокс: животные (по умолчанию выкл)",
+    Flag = "NPCHitboxAnimals",
+    Default = false,
+    Callback = function(state)
+        S.NPC.HitboxAnimals = state
+        journal("ХИТБОКС ЖИВОТНЫЕ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.NPCHitboxSleepers = BotHitSection:Toggle({
+    Name = "Хитбокс: слиперы (по умолчанию выкл)",
+    Flag = "NPCHitboxSleepers",
+    Default = false,
+    Callback = function(state)
+        S.NPC.HitboxSleepers = state
+        journal("ХИТБОКС СЛИПЕРЫ " .. (state and "ВКЛ" or "ВЫКЛ"))
     end
 })
 
@@ -6363,7 +6952,9 @@ local Aim = {
     Crosshair = false,
     -- 0.26: кого аимить + авто-предикт
     TargetsPlayers = true,   -- игроки
-    TargetsNPC = false,      -- боты и НПС
+    TargetsNPC = false,      -- боты и НПС (охранники и мирные)
+    TargetsAnimals = false,  -- 0.28: животные (по умолчанию ВЫКЛ)
+    TargetsSleepers = false, -- 0.28: слиперы/спящие игроки (по умолчанию ВЫКЛ)
     AutoPredict = false,     -- авто-упреждение под цель
     AutoPredictK = 1,        -- коэффициент авто-упреждения
 }
@@ -7012,29 +7603,45 @@ UIRegistry.AimPriority = TargetSection:Dropdown({
 -- с Humanoid вне списка игроков).
 UIRegistry.AimTargets = TargetSection:Dropdown({
     Name = "Кого аимить",
-    Items = { "Игроки", "Боты и НПС" },
+    Items = { "Игроки", "Боты и НПС", "Животные", "Слиперы" },
     Default = { "Игроки" },
     Flag = "AimTargets",
     Multi = true,
     Callback = function(list)
-        local players, npc = false, false
+        -- 0.28: цели по категориям. «Боты и НПС» = охранники и мирные;
+        -- животные и слиперы — отдельные пункты и по умолчанию ВЫКЛ:
+        -- аим больше не агрится на спящих тел и не трогает животных,
+        -- пока их не включили руками.
+        local players, npc, animals, sleepers = false, false, false, false
         if type(list) == "table" then
             for _, v in ipairs(list) do
                 if v == "Игроки" then
                     players = true
                 elseif v == "Боты и НПС" then
                     npc = true
+                elseif v == "Животные" then
+                    animals = true
+                elseif v == "Слиперы" then
+                    sleepers = true
                 end
             end
         end
         Aim.TargetsPlayers = players
         Aim.TargetsNPC = npc
+        Aim.TargetsAnimals = animals
+        Aim.TargetsSleepers = sleepers
         local labels = {}
         if players then
             table.insert(labels, "игроки")
         end
         if npc then
             table.insert(labels, "боты/НПС")
+        end
+        if animals then
+            table.insert(labels, "животные")
+        end
+        if sleepers then
+            table.insert(labels, "слиперы")
         end
         journal("АИМ ЦЕЛИ: " .. (#labels > 0 and table.concat(labels, " + ") or "никого"))
     end
@@ -7151,7 +7758,8 @@ local NPC_LastCount = 0  -- сколько НПС отслежено (диагн
 
 local function npcFeaturesActive()
     return (S.NPC.ESP or S.NPC.Chams or S.NPC.HitboxEnabled
-        or (Aim.Enabled and Aim.TargetsNPC)) and true or false
+        or (Aim.Enabled and (Aim.TargetsNPC or Aim.TargetsAnimals or Aim.TargetsSleepers)))
+        and true or false
 end
 
 local function isPlayerCharacter(model)
@@ -7278,6 +7886,687 @@ task.spawn(function()
     end
 end)
 
+-- ============ 0.29: РЮКЗАКИ С ЛУТОМ (трекер + ESP добычи) ============
+-- Рюкзак, который остаётся после смерти игрока, лежит в Workspace.
+-- Игра сама подписывает, чей это лут (подпись у рюкзака — обычно
+-- ProximityPrompt «Обыскать», плюс атрибуты Owner/Player), и хранит
+-- наполнение. Мы ТОЛЬКО ЧИТАЕМ мир: имена, атрибуты, подписи промптов,
+-- количество детей. В игру ничего не отправляется, рисуем Drawing-ом
+-- у себя на клиенте — бан-риск ровно такой же, как у обычного ESP.
+--
+-- Владелец (чей лут): атрибуты Owner/Player (+UserId) -> Value-объекты
+-- -> ник игрока из подписи промпта (сравниваем со списком игроков) ->
+-- подпись целиком («Рюкзак Ванюши») -> ник в имени модели.
+-- Слоты (сколько забито): атрибуты UsedSlots/Slots/ItemCount… ->
+-- Value-объекты -> папки-инвентари (считаем предметы) -> число в кнопке
+-- промпта («Обыскать (12)»). Не нашли — «слоты ??», тогда диагностика
+-- и по её логу паттерны правятся под реальные данные игры.
+
+local trackedBackpacks = {}  -- [inst] = { Info, InfoAt, BBoxCF, BBoxSize, BBoxAt }
+local bpDrawings = {}        -- [inst] = { Box, Owner, Slots, Distance }
+
+-- Фрагменты имён. string.lower не меняет кириллицу, поэтому русские
+-- слова взяты БЕЗ первой буквы: «кзак» ловит «Рюкзак», «рюкзак» и
+-- «РЮКЗАК» — регистр первой буквы не важен.
+local BP_NAME_PATTERNS = {
+    "кзак", "backpack", "умк", "ешок", "руп", "станк", "роп",
+    "corpse", "deadbody", "dead body", "loot", "lootbag", "dropbag",
+}
+local BP_PROMPT_PATTERNS = { "кзак", "backpack", "лут", "ут", "loot", "обыск", "search" }
+local BP_TAGS = { "FustBackpack", "Backpack", "LootBag", "LootBackpack", "Corpse", "FustCorpse", "DeadBody" }
+
+local BP_OWNER_ATTRS = { "owner", "ownername", "ownerplayer", "player", "playername", "creator", "creatorname", "nick", "nickname", "username" }
+local BP_OWNERID_ATTRS = { "ownerid", "owneruserid", "userid", "playerid" }
+local BP_USED_ATTRS = { "usedslots", "filledslots", "slotsused", "slotstaken", "takenslots", "items", "itemcount", "itemscount", "lootcount", "count", "amount" }
+local BP_MAX_ATTRS = { "slotcount", "maxslots", "totalslots", "slotsmax", "capacity", "slots" }
+local BP_SLOT_FOLDERS = { "items", "inventory", "slots", "container", "storage", "contents", "content", "loot" }
+local BP_OWNER_VALUE_NAMES = { "owner", "ownername", "player", "playername", "ownerplayer" }
+
+local function bpNameLower(inst)
+    local okN, nameL = pcall(function()
+        return string.lower(tostring(inst.Name))
+    end)
+    if okN then
+        return nameL
+    end
+    return ""
+end
+
+local function bpMatchesFragments(text, patterns)
+    for _, pat in ipairs(patterns) do
+        if string.find(text, pat, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Подпись лута у игры — обычно ProximityPrompt над рюкзаком
+local function bpCheckPromptText(prompt)
+    local okT, txt = pcall(function()
+        return string.lower(tostring(prompt.ObjectText)) .. " " .. tostring(prompt.ActionText)
+    end)
+    if not okT or not txt then
+        return false
+    end
+    return bpMatchesFragments(txt, BP_PROMPT_PATTERNS)
+end
+
+-- Живые игроки, их персонажи, вьюмодел камеры и НПС — не лут
+local function bpIsEligibleInstance(inst)
+    if not inst or not inst.Parent then
+        return false
+    end
+    if not inst:IsA("Model") and not inst:IsA("BasePart") then
+        return false
+    end
+    if not inst:IsDescendantOf(Workspace) then
+        return false
+    end
+    local cam = Workspace.CurrentCamera
+    if cam and inst:IsDescendantOf(cam) then
+        return false
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        local c = plr.Character
+        if c and (c == inst or inst:IsDescendantOf(c)) then
+            return false
+        end
+    end
+    if trackedNPCs[inst] then
+        return false
+    end
+    if inst:IsA("Model") and inst:FindFirstChildOfClass("Humanoid") then
+        return false
+    end
+    return true
+end
+
+local function bpMatchesLoot(inst)
+    if bpMatchesFragments(bpNameLower(inst), BP_NAME_PATTERNS) then
+        return true
+    end
+    local okP, prompt = pcall(function()
+        return inst:FindFirstChildOfClass("ProximityPrompt")
+    end)
+    if okP and prompt and bpCheckPromptText(prompt) then
+        return true
+    end
+    return false
+end
+
+local function bpTryTrack(inst)
+    if trackedBackpacks[inst] then
+        return
+    end
+    if not bpIsEligibleInstance(inst) then
+        return
+    end
+    if bpMatchesLoot(inst) then
+        trackedBackpacks[inst] = {}
+    end
+end
+
+-- ---------- отрисовка (Drawing, как у игроков и ботов) ----------
+
+local function bpEnsureDrawings(inst)
+    local ed = bpDrawings[inst]
+    if not ed then
+        ed = {
+            Box = Drawing.new("Square"),
+            Owner = Drawing.new("Text"),
+            Slots = Drawing.new("Text"),
+            Distance = Drawing.new("Text"),
+        }
+        ed.Box.Filled = false
+        ed.Box.Thickness = 1
+        for _, key in ipairs({ "Owner", "Slots", "Distance" }) do
+            ed[key].Center = true
+            ed[key].Outline = true
+            ed[key].Font = Drawing.Fonts.Plex
+        end
+        ed.Owner.Size = 14
+        ed.Slots.Size = 13
+        ed.Distance.Size = 12
+        bpDrawings[inst] = ed
+    end
+    return ed
+end
+
+local function bpRemoveDrawings(inst)
+    local ed = bpDrawings[inst]
+    if ed then
+        for _, obj in pairs(ed) do
+            pcall(function()
+                obj:Remove()
+            end)
+        end
+        bpDrawings[inst] = nil
+    end
+end
+
+local function bpHideDrawings(inst)
+    local ed = bpDrawings[inst]
+    if ed then
+        ed.Box.Visible = false
+        ed.Owner.Visible = false
+        ed.Slots.Visible = false
+        ed.Distance.Visible = false
+    end
+end
+
+local function bpHideAll()
+    for inst in pairs(bpDrawings) do
+        bpHideDrawings(inst)
+    end
+end
+
+local function bpRemoveAll()
+    for inst in pairs(bpDrawings) do
+        bpRemoveDrawings(inst)
+    end
+    table.clear(trackedBackpacks)
+end
+
+-- ---------- габарит и проекция ----------
+
+-- Габарит рюкзака с кэшем (GetBoundingBox не бесплатный)
+local function bpGetBBox(inst)
+    local e = trackedBackpacks[inst]
+    local now = os.clock()
+    if e and e.BBoxCF and e.BBoxSize and e.BBoxAt and now - e.BBoxAt < 0.5 then
+        return e.BBoxCF, e.BBoxSize
+    end
+    local cf, sz
+    if inst:IsA("Model") then
+        local okB, bcf, bsz = pcall(function()
+            return inst:GetBoundingBox()
+        end)
+        if okB and bcf and bsz then
+            cf, sz = bcf, bsz
+        end
+    elseif inst:IsA("BasePart") then
+        cf, sz = inst.CFrame, inst.Size
+    end
+    if not cf or not sz or sz.Magnitude <= 0 then
+        return nil
+    end
+    -- страховка от гигантских «контейнеров» (зоны/склады на полкарты)
+    if sz.Magnitude > 60 then
+        sz = Vector3.new(2, 2, 2)
+    end
+    if e then
+        e.BBoxCF, e.BBoxSize, e.BBoxAt = cf, sz, now
+    end
+    return cf, sz
+end
+
+-- Проекция 8 углов габарита (та же математика, что у игроков/ботов:
+-- глубину считаем сами через Dot — у Delta WorldToViewportPoint врёт
+-- с Z на большой дистанции)
+local function bpProject(camera, cf, sz)
+    local camPos = camera.CFrame.Position
+    local look = camera.CFrame.LookVector
+    local hx = sz.X * 0.5 + 0.5
+    local hy = sz.Y * 0.5 + 0.5
+    local hz = sz.Z * 0.5 + 0.5
+    local minX, minY = math.huge, math.huge
+    local maxX, maxY = -math.huge, -math.huge
+    for i = 0, 7 do
+        local ox = (i % 2 == 0) and -hx or hx
+        local oy = (i % 4 < 2) and -hy or hy
+        local oz = (i < 4) and -hz or hz
+        local corner = (cf * CFrame.new(ox, oy, oz)).Position
+        if (corner - camPos):Dot(look) <= 0.1 then
+            return nil
+        end
+        local pt = camera:WorldToViewportPoint(corner)
+        if pt.X < minX then minX = pt.X end
+        if pt.X > maxX then maxX = pt.X end
+        if pt.Y < minY then minY = pt.Y end
+        if pt.Y > maxY then maxY = pt.Y end
+    end
+    return Vector2.new(minX, minY), Vector2.new(maxX - minX, maxY - minY)
+end
+
+-- ---------- чтение инфы: владелец + слоты ----------
+
+local function bpReadInfo(inst)
+    local owner
+    local slotsUsed, slotsMax, itemCount
+
+    -- 1) атрибуты — игра часто пишет владельца и наполнение туда
+    local okA, attrs = pcall(function()
+        return inst:GetAttributes()
+    end)
+    if okA and type(attrs) == "table" then
+        for key, val in pairs(attrs) do
+            local keyL = string.lower(tostring(key))
+            if owner == nil and type(val) == "string" and #val > 0 and #val <= 32
+                and table.find(BP_OWNER_ATTRS, keyL) then
+                owner = val
+            end
+            if owner == nil and type(val) == "number"
+                and table.find(BP_OWNERID_ATTRS, keyL) then
+                local okP, plr = pcall(Players.GetPlayerByUserId, Players, val)
+                if okP and plr then
+                    owner = plr.Name
+                end
+            end
+            if type(val) == "number" then
+                if slotsUsed == nil and table.find(BP_USED_ATTRS, keyL) then
+                    slotsUsed = val
+                end
+                if slotsMax == nil and table.find(BP_MAX_ATTRS, keyL) then
+                    slotsMax = val
+                end
+            end
+        end
+    end
+
+    -- 2) Value-объекты прямо в рюкзаке (StringValue «Owner», IntValue «Slots»)
+    local okC, children = pcall(function()
+        return inst:GetChildren()
+    end)
+    if okC and type(children) == "table" then
+        for _, ch in ipairs(children) do
+            local nameL = string.lower(tostring(ch.Name))
+            if ch:IsA("StringValue") then
+                if owner == nil and table.find(BP_OWNER_VALUE_NAMES, nameL)
+                    and type(ch.Value) == "string" and #ch.Value > 0 and #ch.Value <= 32 then
+                    owner = ch.Value
+                end
+            elseif ch:IsA("ObjectValue") then
+                if owner == nil and table.find(BP_OWNER_VALUE_NAMES, nameL)
+                    and typeof(ch.Value) == "Instance" then
+                    local okV, vName = pcall(function()
+                        return tostring(ch.Value.Name)
+                    end)
+                    if okV then
+                        owner = vName
+                    end
+                end
+            elseif ch:IsA("IntValue") or ch:IsA("NumberValue") then
+                local v = tonumber(ch.Value)
+                if v then
+                    if slotsUsed == nil and nameL ~= "slots" and table.find(BP_USED_ATTRS, nameL) then
+                        slotsUsed = v
+                    end
+                    if slotsMax == nil and table.find(BP_MAX_ATTRS, nameL) then
+                        slotsMax = v
+                    end
+                end
+            end
+        end
+    end
+
+    -- 3) подпись промпта: чей лут + число предметов в кнопке
+    local okP, prompt = pcall(function()
+        return inst:FindFirstChildOfClass("ProximityPrompt")
+    end)
+    if okP and prompt then
+        if owner == nil then
+            local okT, title = pcall(function()
+                return tostring(prompt.ObjectText)
+            end)
+            if okT and title and #title > 0 and #title <= 48 then
+                local titleL = string.lower(title)
+                -- ник игрока прямо в подписи («Рюкзак Dimon4ik»)
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    local nL = string.lower(plr.Name)
+                    local dL = string.lower(plr.DisplayName)
+                    if string.find(titleL, nL, 1, true)
+                        or (dL ~= nL and #dL > 2 and string.find(titleL, dL, 1, true)) then
+                        owner = plr.Name
+                        break
+                    end
+                end
+                if owner == nil then
+                    -- «Рюкзак Ванюши» -> «Ванюши»; просто «Рюкзак» -> ничего
+                    local cleaned = tostring(title):gsub("кзак", ""):gsub("ackpack", ""):gsub("loot", ""):gsub("LOOT", "")
+                    cleaned = cleaned:gsub("^[%s%p]+", ""):gsub("[%s%p]+$", "")
+                    if #cleaned >= 2 then
+                        owner = cleaned
+                    end
+                end
+            end
+        end
+        if slotsUsed == nil then
+            local okAc, actText = pcall(function()
+                return tostring(prompt.ActionText)
+            end)
+            if okAc and actText then
+                -- «Обыскать (12)» / «Взять [8]» — число в кнопке
+                local num = string.match(actText, "%((%d+)%)")
+                    or string.match(actText, "%[(%d+)%]")
+                    or string.match(actText, "(%d+)")
+                if num then
+                    slotsUsed = tonumber(num)
+                end
+            end
+        end
+    end
+
+    -- 4) ник в имени модели
+    if owner == nil then
+        local nameL = bpNameLower(inst)
+        if #nameL > 0 then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if string.find(nameL, string.lower(plr.Name), 1, true) then
+                    owner = plr.Name
+                    break
+                end
+            end
+        end
+    end
+
+    -- 5) наполнение: папки-инвентари и предметы внутри
+    if slotsUsed == nil and okC and type(children) == "table" then
+        for _, ch in ipairs(children) do
+            if ch:IsA("Folder") or ch:IsA("Model") then
+                local nameL = string.lower(tostring(ch.Name))
+                if bpMatchesFragments(nameL, BP_SLOT_FOLDERS) then
+                    local cnt = 0
+                    local okI, items = pcall(function()
+                        return ch:GetChildren()
+                    end)
+                    if okI and type(items) == "table" then
+                        for _, item in ipairs(items) do
+                            if item:IsA("Tool") or item:IsA("Model") or item:IsA("BasePart")
+                                or item:IsA("IntValue") or item:IsA("NumberValue")
+                                or item:IsA("StringValue") then
+                                cnt = cnt + 1
+                            end
+                        end
+                    end
+                    if cnt > 0 then
+                        itemCount = math.max(itemCount or 0, cnt)
+                    end
+                end
+            end
+        end
+        local tools = 0
+        for _, ch in ipairs(children) do
+            if ch:IsA("Tool") then
+                tools = tools + 1
+            end
+        end
+        if tools > 0 then
+            itemCount = math.max(itemCount or 0, tools)
+        end
+    end
+
+    -- 6) слоты текстом: «12/24» -> «12 слот.» -> «N предм.» -> nil
+    local slotsText
+    if slotsUsed and slotsMax and slotsMax > 0 then
+        slotsText = string.format("%d/%d", math.floor(slotsUsed), math.floor(slotsMax))
+    elseif slotsUsed then
+        slotsText = string.format("%d слот.", math.floor(slotsUsed))
+    elseif itemCount then
+        slotsText = tostring(itemCount) .. " предм."
+    end
+
+    return { Owner = owner, Slots = slotsText }
+end
+
+-- ---------- покадровая отрисовка ----------
+
+local function updateBackpackEsp(camera, myRoot)
+    -- мусор: рюкзак исчез из мира
+    for inst in pairs(trackedBackpacks) do
+        if not inst.Parent or not inst:IsDescendantOf(Workspace) then
+            bpRemoveDrawings(inst)
+            trackedBackpacks[inst] = nil
+        end
+    end
+
+    if not S.Loot.Enabled or not myRoot then
+        bpHideAll()
+        return
+    end
+
+    local now = os.clock()
+    for inst, e in pairs(trackedBackpacks) do
+        -- инфа с кэшем 2с: атрибуты/промпты читаем редко — дёшево
+        if not e.InfoAt or now - e.InfoAt > 2 then
+            e.Info = bpReadInfo(inst)
+            e.InfoAt = now
+        end
+
+        local cf, sz = bpGetBBox(inst)
+        local dist = cf and (cf.Position - myRoot.Position).Magnitude
+        if cf and dist and dist <= S.Loot.MaxDistance * 1.06 + 10 then
+            local topLeft, boxSize = bpProject(camera, cf, sz)
+            if topLeft then
+                -- минимальный читаемый размер — как у игроков и ботов
+                local MINW, MINH = 8, 11
+                if boxSize.X < MINW or boxSize.Y < MINH then
+                    local cx, cy = topLeft.X + boxSize.X * 0.5, topLeft.Y + boxSize.Y * 0.5
+                    local w = math.max(boxSize.X, MINW)
+                    local h = math.max(boxSize.Y, MINH)
+                    topLeft = Vector2.new(cx - w * 0.5, cy - h * 0.5)
+                    boxSize = Vector2.new(w, h)
+                end
+
+                local pad = 2
+                local bx = topLeft.X - pad
+                local by = topLeft.Y - pad
+                local bw = boxSize.X + pad * 2
+                local bh = boxSize.Y + pad * 2
+                local centerX = bx + bw * 0.5
+
+                local ed = bpEnsureDrawings(inst)
+                local info = e.Info or {}
+
+                if S.Loot.Box then
+                    ed.Box.Position = Vector2.new(bx, by)
+                    ed.Box.Size = Vector2.new(bw, bh)
+                    ed.Box.Color = LOOT_COLOR
+                    ed.Box.Visible = true
+                else
+                    ed.Box.Visible = false
+                end
+
+                local textY = by + bh + 3
+                if S.Loot.Slots then
+                    ed.Slots.Text = info.Slots or "слоты ??"
+                    ed.Slots.Position = Vector2.new(centerX, textY)
+                    ed.Slots.Color = LOOT_COLOR
+                    ed.Slots.Visible = true
+                    textY = textY + 17
+                else
+                    ed.Slots.Visible = false
+                end
+
+                if S.Loot.Distance then
+                    ed.Distance.Text = math.floor(dist + 0.5) .. "m"
+                    ed.Distance.Position = Vector2.new(centerX, textY)
+                    ed.Distance.Color = LOOT_COLOR
+                    ed.Distance.Visible = true
+                else
+                    ed.Distance.Visible = false
+                end
+
+                if S.Loot.Owner and info.Owner then
+                    ed.Owner.Text = tostring(info.Owner)
+                    ed.Owner.Position = Vector2.new(centerX, by - 18)
+                    ed.Owner.Color = LOOT_COLOR
+                    ed.Owner.Visible = true
+                else
+                    ed.Owner.Visible = false
+                end
+            else
+                bpHideDrawings(inst)
+            end
+        else
+            bpHideDrawings(inst)
+            if dist and dist > S.Loot.MaxDistance * 1.25 + 50 then
+                bpRemoveDrawings(inst)
+            end
+        end
+    end
+end
+
+-- ---------- фоновый скан + события ----------
+
+-- Фоновый скан раз в секунду (глубина 3 от Workspace) — рендер не
+-- грузим; поток умирает вместе с сессией при перезапуске скрипта
+task.spawn(function()
+    while getgenv().FUST_SESSION == FUST_SESSION do
+        if S.Loot.Enabled then
+            pcall(function()
+                for inst in pairs(trackedBackpacks) do
+                    if not inst.Parent or not inst:IsDescendantOf(Workspace) then
+                        bpRemoveDrawings(inst)
+                        trackedBackpacks[inst] = nil
+                    end
+                end
+                bpScanContainer(Workspace, 3)
+                -- рюкзаки по тегам игры — могут лежать вне папок
+                for _, tag in ipairs(BP_TAGS) do
+                    local okT, tagged = pcall(CollectionService.GetTagged, CollectionService, tag)
+                    if okT and type(tagged) == "table" then
+                        for _, inst in ipairs(tagged) do
+                            bpTryTrack(inst)
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(1)
+    end
+end)
+
+-- Новые рюкзаки и промпты ловим сразу; скан раз в секунду доберёт
+-- остальное. Только чтение мира.
+pcall(function()
+    Library:Connect(Workspace.DescendantAdded, function(inst)
+        if not S.Loot.Enabled then
+            return
+        end
+        if inst:IsA("ProximityPrompt") then
+            task.defer(function()
+                local okH, holder = pcall(function()
+                    return inst:FindFirstAncestorOfClass("Model")
+                        or (inst.Parent and inst.Parent:IsA("BasePart") and inst.Parent)
+                        or nil
+                end)
+                if not okH then
+                    return
+                end
+                if holder then
+                    if trackedBackpacks[holder] then
+                        -- подпись изменилась — перечитаем инфу
+                        trackedBackpacks[holder].InfoAt = nil
+                    elseif bpCheckPromptText(inst) and bpIsEligibleInstance(holder) then
+                        trackedBackpacks[holder] = {}
+                    end
+                end
+            end)
+        elseif inst:IsA("Model") or inst:IsA("BasePart") then
+            task.defer(bpTryTrack, inst)
+        end
+    end)
+end)
+
+-- Диагностика: раз в 10 секунд печатает всё, что удалось прочитать у
+-- каждого рюкзака: имя, папку, атрибуты, подпись промпта, детей. Если
+-- владелец/слоты определились неверно или «слоты ??» — по этому логу
+-- паттерны правятся под реальные данные игры. Если отслежено НОЛЬ
+-- рюкзаков — печатает объекты в 150м вокруг, чтобы было видно, как
+-- игра вообще называет рюкзаки (тяжёлый обход — только в диагностике).
+task.spawn(function()
+    while getgenv().FUST_SESSION == FUST_SESSION do
+        if S.Loot.DebugLog and S.Loot.Enabled then
+            pcall(function()
+                local count = 0
+                for inst, e in pairs(trackedBackpacks) do
+                    count = count + 1
+                    local okN, instName = pcall(function()
+                        return tostring(inst.Name)
+                    end)
+                    local okPar, parentName = pcall(function()
+                        return inst.Parent and tostring(inst.Parent.Name) or "нет"
+                    end)
+                    local attrsText = "-"
+                    pcall(function()
+                        local parts = {}
+                        for key, val in pairs(inst:GetAttributes()) do
+                            table.insert(parts, tostring(key) .. "=" .. tostring(val))
+                        end
+                        if #parts > 0 then
+                            attrsText = table.concat(parts, ", ")
+                        end
+                    end)
+                    local promptText = "-"
+                    pcall(function()
+                        local pr = inst:FindFirstChildOfClass("ProximityPrompt")
+                        if pr then
+                            promptText = "[" .. tostring(pr.ObjectText) .. "] [" .. tostring(pr.ActionText) .. "]"
+                        end
+                    end)
+                    local kidsText = "-"
+                    pcall(function()
+                        local parts = {}
+                        for _, ch in ipairs(inst:GetChildren()) do
+                            if #parts >= 10 then
+                                table.insert(parts, "...")
+                                break
+                            end
+                            table.insert(parts, tostring(ch.Name) .. ":" .. ch.ClassName)
+                        end
+                        if #parts > 0 then
+                            kidsText = table.concat(parts, ", ")
+                        end
+                    end)
+                    local info = e.Info or {}
+                    print(string.format(
+                        "[FUST][ЛУТ] %s (%s) | папка: %s | владелец: %s | слоты: %s | атрибуты: %s | промпт: %s | дети: %s",
+                        okN and instName or "?",
+                        inst.ClassName,
+                        okPar and parentName or "?",
+                        tostring(info.Owner),
+                        tostring(info.Slots),
+                        attrsText,
+                        promptText,
+                        kidsText
+                    ))
+                end
+                print("[FUST][ЛУТ] всего отслежено: " .. tostring(count))
+                if count == 0 then
+                    local cam = Workspace.CurrentCamera
+                    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if myRoot then
+                        local shown = 0
+                        for _, inst in ipairs(Workspace:GetDescendants()) do
+                            if shown >= 30 then
+                                break
+                            end
+                            if (inst:IsA("Model") or inst:IsA("BasePart"))
+                                and not inst:FindFirstChildOfClass("Humanoid")
+                                and (not cam or not inst:IsDescendantOf(cam)) then
+                                local okD, d = pcall(function()
+                                    return (inst:GetPivot().Position - myRoot.Position).Magnitude
+                                end)
+                                if okD and d and d < 150 then
+                                    shown = shown + 1
+                                    print(string.format(
+                                        "[FUST][ЛУТ-РЯДОМ] %s (%s), %.0fm",
+                                        tostring(inst.Name),
+                                        inst.ClassName,
+                                        d
+                                    ))
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        task.wait(10)
+    end
+end)
+
 -- 0.26: АВТО-ПРЕДИКТ. Упреждение считается от дистанции (пуля летит
 -- не мгновенно): ~0.5с на 450м, жёсткие пределы сверху/снизу, коэффи-
 -- циентом подстраивается под оружие. У ботов и НПС скорость сглажива-
@@ -7377,12 +8666,24 @@ local function getAimTarget(camera)
     end
 
     -- БОТЫ И НПС (собирает трекер)
-    if Aim.TargetsNPC then
+    -- 0.28: фильтр целей по категориям. «Боты и НПС» — это охранники и
+    -- мирные; животные и слиперы целятся только если выбраны в «Кого
+    -- аимить» (по умолчанию ВЫКЛ — спящие тела не атакуются).
+    if Aim.TargetsNPC or Aim.TargetsAnimals or Aim.TargetsSleepers then
         for model in pairs(trackedNPCs) do
             local hum = model and model:FindFirstChildOfClass("Humanoid")
             local root = model and model:FindFirstChild("HumanoidRootPart")
 
             if hum and root and hum.Health > 0 then
+                local aimCat = npcGetCategory(model, hum, root)
+                local catWanted =
+                    ((aimCat == "Guard" or aimCat == "Peaceful") and Aim.TargetsNPC)
+                    or (aimCat == "Animal" and Aim.TargetsAnimals)
+                    or (aimCat == "Sleeper" and Aim.TargetsSleepers)
+                if not catWanted then
+                    continue
+                end
+
                 local worldDist = (root.Position - localRoot.Position).Magnitude
                 if worldDist <= Aim.Distance then
                     local part = resolveAimPart(model, Aim.Part)
@@ -7531,6 +8832,7 @@ local function saveConfig()
                 Distance = S.ESP.Distance,
                 HealthBar = S.ESP.HealthBar,
                 MaxDistance = S.ESP.MaxDistance,
+                DistanceScale = S.ESP.DistanceScale,
             },
             BoxColor = colorToTable(S.ESPColors.Box),
             NPCColors = {
@@ -7572,6 +8874,8 @@ local function saveConfig()
                 HitboxEnabled = S.NPC.HitboxEnabled,
                 HitboxSize = S.NPC.HitboxSize,
                 HitboxTransparency = S.NPC.HitboxTransparency,
+                HitboxAnimals = S.NPC.HitboxAnimals,
+                HitboxSleepers = S.NPC.HitboxSleepers,
             },
             Aim = {
                 Enabled = Aim.Enabled,
@@ -7585,10 +8889,23 @@ local function saveConfig()
                 WallCheck = Aim.WallCheck,
                 TeamCheck = Aim.TeamCheck,
                 Crosshair = Aim.Crosshair,
-                Targets = (Aim.TargetsPlayers and Aim.TargetsNPC and { "Игроки", "Боты и НПС" })
-                    or (Aim.TargetsNPC and { "Боты и НПС" })
-                    or (Aim.TargetsPlayers and { "Игроки" })
-                    or {},
+                -- 0.28: цели по категориям (список для мультидропдауна)
+                Targets = (function()
+                    local t = {}
+                    if Aim.TargetsPlayers then
+                        table.insert(t, "Игроки")
+                    end
+                    if Aim.TargetsNPC then
+                        table.insert(t, "Боты и НПС")
+                    end
+                    if Aim.TargetsAnimals then
+                        table.insert(t, "Животные")
+                    end
+                    if Aim.TargetsSleepers then
+                        table.insert(t, "Слиперы")
+                    end
+                    return t
+                end)(),
                 AutoPredict = Aim.AutoPredict,
                 AutoPredictK = Aim.AutoPredictK,
                 HotkeyKey = hotkeyKey,
@@ -7608,6 +8925,26 @@ local function saveConfig()
                 Position = AntiShake.Position,
                 Oscillation = AntiShake.Oscillation,
             },
+            HUD = {
+                Enabled = S.HUD.Enabled,
+                Size = S.HUD.Size,
+                BgTransparency = S.HUD.BgTransparency,
+                TextTransparency = S.HUD.TextTransparency,
+                Corner = S.HUD.Corner,
+                ShowTPS = S.HUD.ShowTPS,
+                ShowBg = S.HUD.ShowBg,
+            },
+            -- 0.29: рюкзаки с лутом
+            Loot = {
+                Enabled = S.Loot.Enabled,
+                Owner = S.Loot.Owner,
+                Slots = S.Loot.Slots,
+                Distance = S.Loot.Distance,
+                Box = S.Loot.Box,
+                MaxDistance = S.Loot.MaxDistance,
+                DebugLog = S.Loot.DebugLog,
+            },
+            LootColor = colorToTable(LOOT_COLOR),
             Whitelist = wl,
         }
         writefile(CONFIG_FILE, HttpService:JSONEncode(cfg))
@@ -7645,6 +8982,10 @@ local function loadConfig()
             applyFlag("ESPDistance", cfg.ESP.Distance)
             applyFlag("ESPHealthBar", cfg.ESP.HealthBar)
             applyFlag("ESPMaxDistance", cfg.ESP.MaxDistance)
+            -- 0.28: сжатие ESP по дистанции
+            if cfg.ESP.DistanceScale ~= nil then
+                applyFlag("ESPDistanceScale", cfg.ESP.DistanceScale)
+            end
         end
 
         if type(cfg.NPC) == "table" then
@@ -7664,6 +9005,13 @@ local function loadConfig()
             applyFlag("NPCHitboxEnabled", cfg.NPC.HitboxEnabled)
             applyFlag("NPCHitboxSize", cfg.NPC.HitboxSize)
             applyFlag("NPCHitboxTransparency", cfg.NPC.HitboxTransparency)
+            -- 0.28: хитбоксы НПС по категориям
+            if cfg.NPC.HitboxAnimals ~= nil then
+                applyFlag("NPCHitboxAnimals", cfg.NPC.HitboxAnimals)
+            end
+            if cfg.NPC.HitboxSleepers ~= nil then
+                applyFlag("NPCHitboxSleepers", cfg.NPC.HitboxSleepers)
+            end
         end
 
         -- 0.27: восстановление цветов категорий НПС
@@ -7725,6 +9073,41 @@ local function loadConfig()
             applyFlag("AntiShakeRoll", cfg.AntiShake.Roll)
             applyFlag("AntiShakePosition", cfg.AntiShake.Position)
             applyFlag("AntiShakeOscillation", cfg.AntiShake.Oscillation)
+        end
+
+        -- 0.28: микро-HUD
+        if type(cfg.HUD) == "table" then
+            applyFlag("HUDEnabled", cfg.HUD.Enabled)
+            applyFlag("HUDSize", cfg.HUD.Size)
+            applyFlag("HUDBgTransparency", cfg.HUD.BgTransparency)
+            applyFlag("HUDTextTransparency", cfg.HUD.TextTransparency)
+            if cfg.HUD.Corner ~= nil then
+                applyFlag("HUDCorner", cfg.HUD.Corner)
+            end
+            applyFlag("HUDShowTPS", cfg.HUD.ShowTPS)
+            applyFlag("HUDShowBg", cfg.HUD.ShowBg)
+        end
+
+        -- 0.29: рюкзаки с лутом
+        if type(cfg.Loot) == "table" then
+            applyFlag("LootEnabled", cfg.Loot.Enabled)
+            applyFlag("LootOwner", cfg.Loot.Owner)
+            applyFlag("LootSlots", cfg.Loot.Slots)
+            applyFlag("LootDistance", cfg.Loot.Distance)
+            applyFlag("LootBox", cfg.Loot.Box)
+            applyFlag("LootMaxDistance", cfg.Loot.MaxDistance)
+            applyFlag("LootDebugLog", cfg.Loot.DebugLog)
+        end
+
+        -- 0.29: цвет рюкзаков
+        local lootColor = tableToColor(cfg.LootColor)
+        if lootColor then
+            LOOT_COLOR = lootColor
+            if UIRegistry.LootColor and UIRegistry.LootColor.Set then
+                pcall(function()
+                    UIRegistry.LootColor:Set(lootColor)
+                end)
+            end
         end
 
         if type(cfg.Aim) == "table" then
@@ -8576,7 +9959,21 @@ local function getScreenBox(camera, root)
     return Vector2.new(minX, minY), Vector2.new(maxX - minX, maxY - minY)
 end
 
+-- 0.28: масштаб ESP по дистанции. Возвращает (масштаб, применён ли):
+-- 1.0 рядом -> 0.45 на лимите дистанции. Текст не падает ниже читаемого
+-- с телефона минимума (клампится там, где масштаб используется).
+-- Тумблер «Сжатие ESP по дистанции» возвращает старый фиксированный вид.
+local function espDistScale(dist, maxDist)
+    if not S.ESP.DistanceScale then
+        return 1, false
+    end
+    local limit = math.max(maxDist or 1000, 100)
+    local t = math.clamp(dist / limit, 0, 1)
+    return 1 - t * 0.55, true
+end
+
 local renderConnection
+
 renderConnection = RunService.RenderStepped:Connect(function()
     -- V11: защита от зомби-цикла — если запущен более новый скрипт,
     -- этот цикл отключает сам себя
@@ -8647,7 +10044,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
         AR_LastStateJournal = jnow
         pcall(function()
             journal(string.format(
-                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d дрифт=%d) АТ=%d (крен=%d поз=%d дрожь=%d) фб=%d нг=%d нд=%d трассеры=%d нпс-есп=%d нпс-чамсы=%d нпс-хитбокс=%d автопредикт=%d",
+                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d дрифт=%d) АТ=%d (крен=%d поз=%d дрожь=%d) фб=%d нг=%d нд=%d трассеры=%d нпс-есп=%d нпс-чамсы=%d нпс-хитбокс=%d автопредикт=%d рюкзак-есп=%d",
                 Aim.Enabled and 1 or 0,
                 tostring(Aim.Part),
                 tostring(Aim.Priority),
@@ -8669,7 +10066,8 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 S.NPC.ESP and 1 or 0,
                 S.NPC.Chams and 1 or 0,
                 S.NPC.HitboxEnabled and 1 or 0,
-                Aim.AutoPredict and 1 or 0
+                Aim.AutoPredict and 1 or 0,
+                S.Loot.Enabled and 1 or 0
             ))
         end)
     end
@@ -8844,7 +10242,22 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         end
                         local ed = ensureEspDrawings(player)
 
-                        local pad = 2
+                        -- 0.28: масштаб по дистанции — чем дальше игрок,
+                        -- тем мельче его бокс, текст и полосы, но не мельче
+                        -- читаемого с телефона минимума
+                        local sc, scOn = espDistScale(dist, S.ESP.MaxDistance)
+                        local pad = (scOn and sc < 0.7) and 1 or 2
+                        local nameSize = scOn and math.max(10, math.floor(14 * sc + 0.5)) or 14
+                        local distSize = scOn and math.max(10, math.floor(13 * sc + 0.5)) or 13
+                        local itemSize = scOn and math.max(10, math.floor(12 * sc + 0.5)) or 12
+                        ed.Name.Size = nameSize
+                        ed.Distance.Size = distSize
+                        ed.Item.Size = itemSize
+                        ed.HealthText.Size = scOn and math.max(9, math.floor(11 * sc + 0.5)) or 11
+                        ed.Box.Thickness = (scOn and sc >= 0.75) and 2 or 1
+                        ed.HealthBarBg.Thickness = scOn and math.max(2, 3 * sc) or 3
+                        ed.HealthBar.Thickness = scOn and math.max(1, 1.5 * sc) or 1.5
+
                         local bx = topLeft.X - pad
                         local by = topLeft.Y - pad
                         local bw = boxSize.X + pad * 2
@@ -8862,7 +10275,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
 
                         if S.ESP.Name then
                             ed.Name.Text = player.Name
-                            ed.Name.Position = Vector2.new(centerX, by - 18)
+                            ed.Name.Position = Vector2.new(centerX, by - (nameSize + 4))
                             ed.Name.Color = isWhitelisted and COLOR_WHITELIST or COLOR_DEFAULT
                             ed.Name.Visible = true
                         else
@@ -8886,7 +10299,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                             if okTool and tool then
                                 -- если дистанция включена — пишем строкой ниже неё,
                                 -- иначе сразу под боксом
-                                local itemY = by + bh + (S.ESP.Distance and 23 or 4)
+                                local itemY = by + bh + (S.ESP.Distance and (distSize + 10) or 4)
                                 ed.Item.Text = tool.Name
                                 ed.Item.Position = Vector2.new(centerX, itemY)
                                 ed.Item.Color = isWhitelisted and COLOR_WHITELIST or Color3.fromRGB(255, 215, 90)
@@ -8955,7 +10368,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
     -- животные / слиперы), ESP категорий не пересекаются.
     -- Хитбоксы НПС — отдельная функция, хитбоксы игроков не трогает.
     local npcActive = S.NPC.ESP or S.NPC.Chams or S.NPC.HitboxEnabled
-        or (Aim.Enabled and Aim.TargetsNPC)
+        or (Aim.Enabled and (Aim.TargetsNPC or Aim.TargetsAnimals or Aim.TargetsSleepers))
     if npcActive then
         local npcHitApplied = 0
 
@@ -8977,6 +10390,12 @@ renderConnection = RunService.RenderStepped:Connect(function()
                     botCleanupModel(model)
                     botRemoveDrawings(model)
                 else
+                    -- 0.27: категория модели — ровно одна (охранник / мирный /
+                    -- животное / слипер); ESP и чамсы красятся её цветом.
+                    -- 0.28: категория считается ДО хитбокса — теперь им
+                    -- управляют отдельные тумблеры категорий.
+                    local catName, catEnabled, catColor = npcGetCategory(model, hum, root)
+
                     ---------------- Хитбокс НПС ----------------
                     local orig = npcHitboxOriginals[model]
                     if not orig or orig.Root ~= root then
@@ -8990,7 +10409,14 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         npcHitboxOriginals[model] = orig
                     end
 
-                    if S.NPC.HitboxEnabled and hum.Health > 0 then
+                    -- 0.28: хитбоксы НПС по категориям — охранники и мирные
+                    -- как раньше, животные и слиперы только своими тумблерами
+                    -- (спящие тела игроков больше не раздуваются по умолчанию)
+                    local hbAllowed = (catName == "Guard")
+                        or (catName == "Peaceful")
+                        or (catName == "Animal" and S.NPC.HitboxAnimals)
+                        or (catName == "Sleeper" and S.NPC.HitboxSleepers)
+                    if S.NPC.HitboxEnabled and hum.Health > 0 and hbAllowed then
                         npcHitApplied = npcHitApplied + 1
                         local targetSize = Vector3.new(S.NPC.HitboxSize, S.NPC.HitboxSize, S.NPC.HitboxSize)
                         pcall(function()
@@ -9011,10 +10437,6 @@ renderConnection = RunService.RenderStepped:Connect(function()
                             root.CanQuery = orig.CanQuery
                         end)
                     end
-
-                    -- 0.27: категория модели — ровно одна (охранник / мирный /
-                    -- животное / слипер); ESP и чамсы красятся её цветом
-                    local _, catEnabled, catColor = npcGetCategory(model, hum, root)
 
                     ---------------- Чамсы НПС (цвет категории, до потолка) ----------------
                     local botChams = model:FindFirstChild("PETUH_BotChams")
@@ -9070,7 +10492,20 @@ renderConnection = RunService.RenderStepped:Connect(function()
 
                                 local ed = botEnsureDrawings(model)
 
-                                local pad = 2
+                                -- 0.28: тот же масштаб по дистанции у НПС
+                                local sc, scOn = espDistScale(dist, S.NPC.MaxDistance)
+                                local pad = (scOn and sc < 0.7) and 1 or 2
+                                local nameSize = scOn and math.max(10, math.floor(14 * sc + 0.5)) or 14
+                                local distSize = scOn and math.max(10, math.floor(13 * sc + 0.5)) or 13
+                                local itemSize = scOn and math.max(10, math.floor(12 * sc + 0.5)) or 12
+                                ed.Name.Size = nameSize
+                                ed.Distance.Size = distSize
+                                ed.Item.Size = itemSize
+                                ed.HealthText.Size = scOn and math.max(9, math.floor(11 * sc + 0.5)) or 11
+                                ed.Box.Thickness = (scOn and sc >= 0.75) and 2 or 1
+                                ed.HealthBarBg.Thickness = scOn and math.max(2, 3 * sc) or 3
+                                ed.HealthBar.Thickness = scOn and math.max(1, 1.5 * sc) or 1.5
+
                                 local bx = topLeft.X - pad
                                 local by = topLeft.Y - pad
                                 local bw = boxSize.X + pad * 2
@@ -9088,7 +10523,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
 
                                 if S.NPC.Name then
                                     ed.Name.Text = model.Name
-                                    ed.Name.Position = Vector2.new(centerX, by - 18)
+                                    ed.Name.Position = Vector2.new(centerX, by - (nameSize + 4))
                                     ed.Name.Color = catColor
                                     ed.Name.Visible = true
                                 else
@@ -9109,7 +10544,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                                         return model:FindFirstChildOfClass("Tool")
                                     end)
                                     if okTool and tool then
-                                        local itemY = by + bh + (S.NPC.Distance and 23 or 4)
+                                        local itemY = by + bh + (S.NPC.Distance and (distSize + 10) or 4)
                                         ed.Item.Text = tool.Name
                                         ed.Item.Position = Vector2.new(centerX, itemY)
                                         ed.Item.Color = catColor
@@ -9186,6 +10621,15 @@ renderConnection = RunService.RenderStepped:Connect(function()
         NpcHitboxAppliedCount = 0
     end
 
+    -- ============ 0.29: ESP РЮКЗАКОВ С ЛУТОМ ============
+    -- Рюкзаки ищет фоновый скан (модуль 0.29 выше по коду), здесь
+    -- только отрисовка: чтение мира + Drawing на своём клиенте.
+    if myRoot then
+        updateBackpackEsp(Camera, myRoot)
+    else
+        bpHideAll()
+    end
+
     -- V11: одноразовый отчёт — видно в консоли Delta, что цикл жив
     -- и хитбокс реально применяется
     if HitboxAnnouncePending then
@@ -9207,6 +10651,13 @@ getgenv().FUST_RenderCleanup = function()
         renderConnection:Disconnect()
         renderConnection = nil
     end
+
+    -- 0.28: микро-HUD — убираем панельку и её цикл
+    pcall(function()
+        if getgenv().FUST_HUDCleanup then
+            getgenv().FUST_HUDCleanup()
+        end
+    end)
 
     -- V14: отвязываем шаги анти-отдачи и фиксируем выгрузку в журнал
     pcall(function()
@@ -9280,6 +10731,11 @@ getgenv().FUST_RenderCleanup = function()
             end
         end
         table.clear(npcHitboxOriginals)
+    end)
+
+    -- 0.29: рюкзаки с лутом — убираем отрисовку и трекинг
+    pcall(function()
+        bpRemoveAll()
     end)
 end
 
