@@ -1,4 +1,3 @@
- 
 print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.29...")
 local ok, err = pcall(function()
 local Players = game:GetService("Players")
