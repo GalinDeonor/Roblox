@@ -1,9 +1,23 @@
 --[[
-    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.24
+    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.25
     Скрипт сделан на основе скрипта VOMAGLA (подход к трассерам
     пуль и ESP взят оттуда, спасибо автору VOMAGLA).
 
-    НОВОЕ В 0.24 — ХОТКЕЙ АИМБОТА (ПК):
+    НОВОЕ В 0.25 — ОКОННЫЙ РЕЖИМ + ФУЛЛСКРИН (починка телефона):
+    • Починено «меню за рамками экрана»: окно больше не открывается
+      за границами экрана. При запуске, при каждом открытии меню
+      (клавиша или кнопка-петух), при повороте экрана и после
+      перетаскивания позиция окна зажимается в границы экрана —
+      с учётом отступа под топбар Roblox.
+    • По умолчанию меню открывается в ОКОННОМ виде: размер
+      подбирается под экран телефона.
+    • Кнопка ФУЛЛСКРИНА в топбаре (рядом с шестерёнкой): тап —
+      растянуть меню почти на весь экран, повторный тап — вернуть
+      оконный вид. В режиме фуллскрина иконка заливается.
+    • Ресайз окна: минимум 320x240 (было 900x600 — на телефоне окно
+      нельзя было уменьшить, из-за этого и казалось «фуллэкраном»).
+
+    РАНЕЕ (0.24) — ХОТКЕЙ АИМБОТА (ПК):
     • К тумблеру «Аимбот (камера-лок)» прикреплена клавиша — по
       умолчанию RightAlt. Нажатие включает/выключает аимбот, даже
       когда меню закрыто; тумблер в меню двигается вместе с клавишей.
@@ -35,8 +49,8 @@
     • Всё прежнее работает: ESP, чамсы, хитбоксы, аимбот, анти-отдача,
       анти-тряска, трассеры пуль (6 стилей луча), No Fog, FullBright.
 
-    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, ... (прошлые обозначения
-    V2–V21 сохранены в истории ниже).
+    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, ... (прошлые
+    обозначения V2–V21 сохранены в истории ниже).
 
     РАНЕЕ (V2–0.22):
     1. 0.22 — стиль луча трассеров: дропдаун с 6 текстурами VOMAGLA
@@ -64,7 +78,7 @@
     20. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
-print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.24...")
+print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.25...")
 
 local ok, err = pcall(function()
 
@@ -184,7 +198,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК 0.24 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК 0.25 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: инициализирую встроенную библиотеку...")
 
@@ -2090,7 +2104,9 @@ local Library do
                 }):AddToTheme({BackgroundColor3 = 'Background'})
 
                 Items["MainFrame"]:MakeDraggable()
-                Items["MainFrame"]:MakeResizeable(Vector2New(900, 600), Vector2New(9999, 9999))
+                -- 0.25: минимум 320x240 (было 900x600) — на телефоне окно
+                -- можно уменьшить до оконного вида
+                Items["MainFrame"]:MakeResizeable(Vector2New(320, 240), Vector2New(9999, 9999))
 
                 Instances:Create("UICorner", {
                     Parent = Items["MainFrame"].Instance,
@@ -2459,6 +2475,53 @@ UserSubtitle.TextColor3 = Library.Theme.Text
                     Size = UDim2New(0, 15, 0, 15),
                     BorderSizePixel = 0
                 }):AddToTheme({ImageColor3 = 'Text'})
+
+                -- 0.25: КНОПКА ФУЛЛСКРИНА — рядом с шестерёнкой.
+                -- Иконка-рамка: в режиме фуллскрина заливается.
+                Items["FullBtn"] = Instances:Create("TextButton", {
+                    Parent = Items["TopBar"].Instance,
+                    Name = "\0",
+                    Text = "",
+                    AutoButtonColor = false,
+                    Size = UDim2New(0, 30, 0, 30),
+                    BackgroundColor3 = Library.Theme["Element"],
+                    BorderSizePixel = 0,
+                    LayoutOrder = 4
+                }):AddToTheme({BackgroundColor3 = 'Element'})
+
+                Instances:Create("UICorner", {
+                    Parent = Items["FullBtn"].Instance,
+                    Name = "\0",
+                    CornerRadius = UDimNew(1, 0)
+                })
+
+                Instances:Create("UIStroke", {
+                    Parent = Items["FullBtn"].Instance,
+                    Name = "\0",
+                    Color = Library.Theme["Outline"],
+                    Transparency = 0.25,
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                }):AddToTheme({Color = 'Outline'})
+
+                Items["FullBtnFill"] = Instances:Create("Frame", {
+                    Parent = Items["FullBtn"].Instance,
+                    Name = "\0",
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    AnchorPoint = Vector2New(0.5, 0.5),
+                    Position = UDim2New(0.5, 0, 0.5, 0),
+                    Size = UDim2New(0, 11, 0, 11),
+                    BackgroundColor3 = Library.Theme["Text"]
+                }):AddToTheme({BackgroundColor3 = 'Text'})
+
+                Instances:Create("UIStroke", {
+                    Parent = Items["FullBtnFill"].Instance,
+                    Name = "\0",
+                    Color = Library.Theme["Text"],
+                    Thickness = 2,
+                    Transparency = 0.35,
+                    ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                }):AddToTheme({Color = 'Text'})
 
                 Instances:Create("Frame", {
                     Parent = Items["Content"].Instance,
@@ -4815,16 +4878,151 @@ pcall(function()
     Library:ChangeTheme("Accent", Library.Theme.Accent)
 end)
 
--- УНИВЕРСАЛЬНОСТЬ: подгоняем окно под маленький экран телефона.
--- Стандартные 900x600 на телефоне вылезают за края.
-pcall(function()
+-- 0.25: ОКОННЫЙ РЕЖИМ + КНОПКА ФУЛЛСКРИНА + фикс «окно за экраном».
+-- Раньше окно было всегда 900x600, позиция фиксировалась ДО подгонки
+-- размера, а минимум ресайза был 900x600 — на телефоне меню вылезало
+-- за края и не уменьшалось. Теперь: оконный вид по умолчанию, размер
+-- влезает в экран (с учётом отступа топбара Roblox), позиция зажимается
+-- в границах, фуллскрин — по кнопке рядом с шестерёнкой.
+local MainFrame = Window.Items["MainFrame"].Instance
+local WINDOW_MARGIN = 8
+
+local function getViewSize()
     local cam = Workspace.CurrentCamera
-    local vp = cam and cam.ViewportSize or Vector2.new(1200, 800)
-    local main = Window.Items["MainFrame"].Instance
+    local vp = (cam and cam.ViewportSize and cam.ViewportSize.X > 100)
+        and cam.ViewportSize or Vector2.new(1280, 800)
+    -- ScreenGui НЕ игнорирует GuiInset: полезная высота меньше
+    -- на высоту топбара Roblox (на телефоне это ~58px)
+    pcall(function()
+        local inset = game:GetService("GuiService"):GetGuiInset()
+        vp = Vector2.new(vp.X, vp.Y - inset.Y)
+    end)
+    return vp
+end
+
+-- оконный размер: влезает в экран, но не мельче разумного
+local function windowedSize(vp)
     local w = math.clamp(math.min(900, vp.X - 24), 320, 900)
     local h = math.clamp(math.min(600, vp.Y - 90), 240, 600)
-    main.Size = UDim2.fromOffset(w, h)
+    w = math.max(200, math.min(w, vp.X - WINDOW_MARGIN * 2))
+    h = math.max(150, math.min(h, vp.Y - WINDOW_MARGIN * 2))
+    return math.floor(w), math.floor(h)
+end
+
+-- зажимает окно целиком в видимую область (драг/ресайз/поворот)
+local function clampWindowOnScreen()
+    pcall(function()
+        local vp = getViewSize()
+        local maxW = math.max(200, vp.X - WINDOW_MARGIN * 2)
+        local maxH = math.max(150, vp.Y - WINDOW_MARGIN * 2)
+        local w = math.min(MainFrame.Size.X.Offset, maxW)
+        local h = math.min(MainFrame.Size.Y.Offset, maxH)
+        MainFrame.Size = UDim2.fromOffset(w, h)
+
+        local pos = MainFrame.AbsolutePosition
+        local x = math.clamp(pos.X, WINDOW_MARGIN, math.max(WINDOW_MARGIN, vp.X - w - WINDOW_MARGIN))
+        local y = math.clamp(pos.Y, WINDOW_MARGIN, math.max(WINDOW_MARGIN, vp.Y - h - WINDOW_MARGIN))
+        MainFrame.AnchorPoint = Vector2.new(0, 0)
+        MainFrame.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+    end)
+end
+
+-- КНОПКА ФУЛЛСКРИНА: растянуть на экран / вернуть оконный вид
+local WindowFullscreen = false
+local SavedWindowed = nil
+local FullBtn = Window.Items["FullBtn"]
+local FullBtnFill = Window.Items["FullBtnFill"]
+if FullBtn then
+    FullBtn:Connect("MouseButton1Click", function()
+        local vp = getViewSize()
+        WindowFullscreen = not WindowFullscreen
+        local fill = FullBtnFill and FullBtnFill.Instance
+        if WindowFullscreen then
+            local pos = MainFrame.AbsolutePosition
+            SavedWindowed = {
+                w = MainFrame.Size.X.Offset,
+                h = MainFrame.Size.Y.Offset,
+                x = pos.X,
+                y = pos.Y,
+            }
+            MainFrame.AnchorPoint = Vector2.new(0, 0)
+            MainFrame.Size = UDim2.fromOffset(
+                math.max(200, vp.X - WINDOW_MARGIN * 2),
+                math.max(150, vp.Y - WINDOW_MARGIN * 2)
+            )
+            MainFrame.Position = UDim2.fromOffset(WINDOW_MARGIN, WINDOW_MARGIN)
+            if fill then
+                fill.BackgroundTransparency = 0
+            end
+            journal("МЕНЮ: ФУЛЛСКРИН")
+        else
+            local w, h = windowedSize(vp)
+            local x = math.max(WINDOW_MARGIN, math.floor((vp.X - w) / 2))
+            local y = math.max(WINDOW_MARGIN, math.floor((vp.Y - h) / 2))
+            local s = SavedWindowed
+            if s and s.w and s.h then
+                w = math.min(s.w, math.max(200, vp.X - WINDOW_MARGIN * 2))
+                h = math.min(s.h, math.max(150, vp.Y - WINDOW_MARGIN * 2))
+            end
+            if s and s.x and s.y then
+                x = math.clamp(s.x, WINDOW_MARGIN, math.max(WINDOW_MARGIN, vp.X - w - WINDOW_MARGIN))
+                y = math.clamp(s.y, WINDOW_MARGIN, math.max(WINDOW_MARGIN, vp.Y - h - WINDOW_MARGIN))
+            end
+            MainFrame.Size = UDim2.fromOffset(w, h)
+            MainFrame.AnchorPoint = Vector2.new(0, 0)
+            MainFrame.Position = UDim2.fromOffset(math.floor(x), math.floor(y))
+            if fill then
+                fill.BackgroundTransparency = 1
+            end
+            journal("МЕНЮ: ОКОННЫЙ РЕЖИМ")
+        end
+    end)
+end
+
+-- СТАРТ: оконный вид, по центру, гарантированно в границах экрана
+pcall(function()
+    local vp = getViewSize()
+    local w, h = windowedSize(vp)
+    MainFrame.AnchorPoint = Vector2.new(0, 0)
+    MainFrame.Size = UDim2.fromOffset(w, h)
+    MainFrame.Position = UDim2.fromOffset(
+        math.max(WINDOW_MARGIN, math.floor((vp.X - w) / 2)),
+        math.max(WINDOW_MARGIN, math.floor((vp.Y - h) / 2))
+    )
+    journal("МЕНЮ: оконный вид " .. w .. "x" .. h)
 end)
+
+-- ПОВОРОТ/СМЕНА ЭКРАНА: держим окно в границах, фуллскрин растим
+pcall(function()
+    local cam = Workspace.CurrentCamera
+    if cam then
+        Library:Connect(cam:GetPropertyChangedSignal("ViewportSize"), function()
+            task.delay(0.1, function()
+                pcall(function()
+                    if WindowFullscreen then
+                        local vp = getViewSize()
+                        MainFrame.Size = UDim2.fromOffset(
+                            math.max(200, vp.X - WINDOW_MARGIN * 2),
+                            math.max(150, vp.Y - WINDOW_MARGIN * 2)
+                        )
+                        MainFrame.Position = UDim2.fromOffset(WINDOW_MARGIN, WINDOW_MARGIN)
+                    else
+                        clampWindowOnScreen()
+                    end
+                end)
+            end)
+        end)
+    end
+end)
+
+-- на каждое открытие меню (клавиша / кнопка-петух) зажимаем окно в экран
+local baseSetOpen = Window.SetOpen
+Window.SetOpen = function(self, b)
+    if b then
+        clampWindowOnScreen()
+    end
+    return baseSetOpen(self, b)
+end
 
 -- УНИВЕРСАЛЬНОСТЬ: плавающая кнопка-петух. На телефоне нет клавиши
 -- меню: тап по кнопке открывает/скрывает меню, потянуть — перенести.
