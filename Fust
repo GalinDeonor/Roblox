@@ -1,55 +1,70 @@
 --[[
-    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.25
+    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.26
     Скрипт сделан на основе скрипта VOMAGLA (подход к трассерам
     пуль и ESP взят оттуда, спасибо автору VOMAGLA).
 
-    НОВОЕ В 0.25 — ОКОННЫЙ РЕЖИМ + ФУЛЛСКРИН (починка телефона):
-    • Починено «меню за рамками экрана»: окно больше не открывается
-      за границами экрана. При запуске, при каждом открытии меню
-      (клавиша или кнопка-петух), при повороте экрана и после
-      перетаскивания позиция окна зажимается в границы экрана —
-      с учётом отступа под топбар Roblox.
-    • По умолчанию меню открывается в ОКОННОМ виде: размер
-      подбирается под экран телефона.
-    • Кнопка ФУЛЛСКРИНА в топбаре (рядом с шестерёнкой): тап —
-      растянуть меню почти на весь экран, повторный тап — вернуть
-      оконный вид. В режиме фуллскрина иконка заливается.
-    • Ресайз окна: минимум 320x240 (было 900x600 — на телефоне окно
-      нельзя было уменьшить, из-за этого и казалось «фуллэкраном»).
+    НОВОЕ В 0.26 — БОТЫ/НПС + АВТО-ПРЕДИКТ + «КВАДРАТНЫЙ» ТРАССЕР:
+    • Починен «баганый» ползунок прозрачности: после отмены касания
+      (Delta часто сам снимает тач) слайдер продолжал ехать от ЛЮБОГО
+      касания экрана. Теперь хвост драга закрывается всегда, а шаг
+      округляется к ближайшему значению, а не вниз — упор в максимум
+      больше не откатывается на шаг ниже (0.9 не превращается в 0.85).
+    • Новый стиль трассера «Квадратный» (в дропдауне стиля): объёмная
+      квадратная «труба» из 4 рёбер + яркое ядро по центру. Крупнее
+      обычной полоски, чётко видна, настоящая 3D-форма — сечение
+      перпендикулярно полёту пули. Толщина/прозрачность/затухание —
+      те же слайдеры, вид меняется на лету.
+    • Новая страница «Боты и НПС»:
+        – ESP ботов: оранжевый бокс, ник модели, дистанция, хелсбар,
+          предмет в руках — всё как у игроков, но оранжевым;
+        – чамсы ботов оранжевым (AlwaysOnTop, дистанция — до потолка);
+        – ХИТБОКСЫ НПС И БОТОВ — отдельная функция со своим размером
+          и прозрачностью (хитбоксы игроков не трогает).
+    • Аимбот теперь целится и в ботов/НПС: мультидропдаун «Кого аимить»
+      (Игроки / Боты и НПС) на вкладке «Цель». Боты ищутся сами
+      (модели с Humanoid вне списка игроков).
+    • АВТО-ПРЕДИКТ: упреждение считается само под цель, которую взял
+      аимбот — чем дальше цель, тем больше упреждение; у ботов и НПС
+      скорость сглаживается, чтобы их рывки не дёргали прицел. Ручной
+      слайдер «Предикт» при включённом авто-предикте не используется,
+      есть коэффициент подстройки.
+    • ESP игроков починен на дальней дистанции: дальше ~1200м бокс
+      сжимался меньше пикселя и пропадал, а на границе радиуса мигал.
+      Теперь бокс дотягивается до минимального читаемого размера и
+      работает гистерезис — ESP стабилен до 3000м (лимит по умолчанию
+      теперь 3000м).
+    • Чамсы игроков: привязка к «Max Distance» снята — видны до потолка.
+    • БАН-БЕЗОПАСНОСТЬ: ничего нового в игру не отправляется — ESP/
+      чамсы/трассеры рисуются только у тебя на клиенте (Drawing/Beam/
+      Highlight), хитбоксы НПС меняются тем же способом, что и хитбоксы
+      игроков раньше. Никаких hookmetamethod, перехватов и хуков.
+
+    РАНЕЕ (0.25) — ОКОННЫЙ РЕЖИМ + ФУЛЛСКРИН (починка телефона):
+    • Починено «меню за рамками экрана»: окно зажимается в границы
+      экрана (запуск, открытие, поворот, перетаскивание); по умолчанию
+      — оконный вид под размер телефона.
+    • Кнопка ФУЛЛСКРИНА в топбаре рядом с шестерёнкой: тап — растянуть,
+      повторный тап — вернуть оконный вид. Иконка заливается.
+    • Ресайз окна: минимум 320x240 (было 900x600).
 
     РАНЕЕ (0.24) — ХОТКЕЙ АИМБОТА (ПК):
     • К тумблеру «Аимбот (камера-лок)» прикреплена клавиша — по
-      умолчанию RightAlt. Нажатие включает/выключает аимбот, даже
-      когда меню закрыто; тумблер в меню двигается вместе с клавишей.
-    • ЛЕВЫЙ клик по кнопке [RightAlt] — режим захвата: нажми любую
-      клавишу, и она станет хоткеем аимбота. ESC — отвязать клавишу
-      ([NONE]). ПРАВЫЙ клик по кнопке — выбор режима: Toggle (нажал —
-      вкл/выкл), Hold (аимбот работает, пока клавиша зажата), Always
-      (аимбот включён постоянно).
-    • Клавиша и режим сохраняются в FUST_config.json и восстанавливаются
-      вместе с конфигом.
-    • Хоткей не срабатывает, пока ввод занят текстом (чат, вайтлист).
-    • На телефоне (Delta, без физической клавиатуры) кнопка клавиши
-      не создаётся: тач нельзя привязать, аимбот не «включится сам».
+      умолчанию RightAlt. ЛЕВЫЙ клик по кнопке клавиши — захват новой
+      клавиши (Esc — отвязать), ПРАВЫЙ клик — режим Toggle / Hold /
+      Always. Клавиша и режим сохраняются в конфиг. Хоткей не сраба-
+      тывает, пока ввод занят текстом; на телефоне кнопка не создаётся.
 
     РАНЕЕ (0.23) — НОВАЯ БИБЛИОТЕКА + УНИВЕРСАЛЬНОСТЬ:
-    • Меню переписано на новую библиотеку. Avilon больше НЕ грузится
-      из интернета — библиотека встроена прямо в скрипт: запуск
-      быстрее и не зависит от чужих репозиториев.
-    • Универсальность: готов к запуску в разных экзекуторах —
-      Delta (Android) и Xeno (ПК). Экзекутор определяется сам и
-      пишется в журнал; если в экзекуторе нет Drawing — скрипт не
-      падает, а просто не рисует оверлеи.
+    • Меню переписано на встроенную библиотеку — Avilon больше НЕ
+      грузится из интернета: запуск быстрее, не зависит от чужих
+      репозиториев. Готов к запуску в Delta (Android) и Xeno (ПК).
     • Плавающая кнопка-петух: тап — открыть/скрыть меню, потянуть —
-      переместить кнопку. Меню больше не «теряется» на телефоне.
-    • Окно само подгоняется под маленький экран телефона.
-    • «Аим парт» и «Приоритет» теперь дропдауны (были кнопки-циклы).
-    • Акцент меню — янтарный, под петуха. Вайтлист и конфиги на
-      месте; старый конфиг FUST_config.json подхватывается как был.
+      переместить. Окно подгоняется под маленький экран.
+    • «Аим парт» и «Приоритет» — дропдауны. Акцент меню — янтарный.
     • Всё прежнее работает: ESP, чамсы, хитбоксы, аимбот, анти-отдача,
-      анти-тряска, трассеры пуль (6 стилей луча), No Fog, FullBright.
+      анти-тряска, трассеры пуль (стили луча), No Fog, FullBright.
 
-    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, ... (прошлые
+    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, 0.26, ... (прошлые
     обозначения V2–V21 сохранены в истории ниже).
 
     РАНЕЕ (V2–0.22):
@@ -78,7 +93,7 @@
     20. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
-print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.25...")
+print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.26...")
 
 local ok, err = pcall(function()
 
@@ -198,7 +213,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК 0.25 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК 0.26 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: инициализирую встроенную библиотеку...")
 
@@ -884,7 +899,11 @@ local Library do
 
     Library.Round = function(self, Number, Float)
         local Multiplier = 1 / (Float or 1)
-        return MathFloor(Number * Multiplier) / Multiplier
+        -- 0.26: округляем к БЛИЖАЙШЕМУ шагу, а не вниз (MathFloor).
+        -- Из-за усечения вниз слайдер не мог дотянуться до максимума:
+        -- на «Трассеры: прозрачность» упор в 0.9 откатывался на 0.85.
+        -- Теперь край диапазона достижим.
+        return MathFloor(Number * Multiplier + 0.5) / Multiplier
     end
 
     Library.Thread = function(self, Function)
@@ -3623,6 +3642,18 @@ UserSubtitle.TextColor3 = Library.Theme.Text
 
             Items["RealSlider"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    -- 0.26: фикс «баганого ползунка»: если прошлый драг не
+                    -- закрылся (тач отменила система — Cancel), флаг Sliding
+                    -- оставался true навсегда и ползунок ехал от ЛЮБОГО
+                    -- касания экрана. Хвост закрываем всегда: и на End,
+                    -- и на Cancel, а при новом касании переснимаем.
+                    if InputChanged then
+                        pcall(function()
+                            InputChanged:Disconnect()
+                        end)
+                        InputChanged = nil
+                    end
+
                     Slider.Sliding = true
 
                     local SizeX = (Input.Position.X - Items["RealSlider"].Instance.AbsolutePosition.X) / Items["RealSlider"].Instance.AbsoluteSize.X
@@ -3630,16 +3661,15 @@ UserSubtitle.TextColor3 = Library.Theme.Text
 
                     Slider:Set(Value)
 
-                    if InputChanged then
-                        return
-                    end
-
                     InputChanged = Input.Changed:Connect(function()
-                        if Input.UserInputState == Enum.UserInputState.End then
+                        if Input.UserInputState == Enum.UserInputState.End
+                            or Input.UserInputState == Enum.UserInputState.Cancel then
                             Slider.Sliding = false
 
-                            InputChanged:Disconnect()
-                            InputChanged = nil
+                            if InputChanged then
+                                InputChanged:Disconnect()
+                                InputChanged = nil
+                            end
                         end
                     end)
                 end
@@ -5158,6 +5188,21 @@ local S = {
     NoGrass = false,
     NoFog = false,
     Bullets = { Enabled = false, Style = "Луч", Width = 1.5, Transparency = 0, Fade = 1 },
+    -- 0.26: боты и НПС — модели с Humanoid вне списка игроков
+    NPC = {
+        ESP = false,
+        Box = false,
+        Name = false,
+        Item = false,
+        Distance = false,
+        HealthBar = false,
+        Chams = false,
+        ChamsTransparency = 0.5,
+        MaxDistance = 3000,
+        HitboxEnabled = false,
+        HitboxSize = 9,
+        HitboxTransparency = 0.7,
+    },
 }
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
@@ -5165,6 +5210,8 @@ local Whitelist = {}         -- имя игрока -> true (общий вайт
 local FUST_BulletsSet = nil  -- V20: полный вкл/выкл трассеров (функция ниже)
 
 local HitboxAnnouncePending = false  -- V11: одноразовый отчёт в консоль при включении хитбокса
+local NpcHitboxAnnouncePending = false  -- 0.26: одноразовый отчёт по хитбоксам НПС
+local NpcHitboxAppliedCount = 0         -- 0.26: сколько моделей НПС расширено в этом кадре
 
 -- V14: анти-отдача — БЕЗ hookmetamethod (перехват метаметода game и был
 -- главным бан-риском в V12). Осталось два прозрачных слоя, каждый —
@@ -5310,7 +5357,7 @@ UIRegistry.BulletsEnabled = EspSection:Toggle({
 
 UIRegistry.BulletsStyle = EspSection:Dropdown({
     Name = "Трассеры: стиль луча",
-    Items = { "Луч", "Молния", "Сердцебиение", "Цепь", "Глитч", "Вихрь" },
+    Items = { "Луч", "Квадратный", "Молния", "Сердцебиение", "Цепь", "Глитч", "Вихрь" },
     Flag = "BulletsStyle",
     Default = "Луч",
     Callback = function(Value)
@@ -5369,13 +5416,152 @@ UIRegistry.ESPHealthBar = EspSection:Toggle({
 UIRegistry.ESPMaxDistance = EspSection:Slider({
     Name = "Max Distance",
     Flag = "ESPMaxDistance",
-    Default = 1500,
+    Default = 3000,
     Min = 100,
     Max = 5000,
     Decimals = 50,
     Suffix = "m",
     Callback = function(Value)
         S.ESP.MaxDistance = Value
+    end
+})
+
+-- ============ 0.26: СТРАНИЦА «БОТЫ И НПС» ============
+-- Боты и НПС — неигровые персонажи (модели с Humanoid вне списка
+-- игроков). ESP и чамсы — оранжевые (цвет выделен под них), хитбоксы —
+-- отдельная функция со своими настройками, хитбоксы игроков не трогает.
+local BotPage = Window:Page({ Name = "Боты и НПС", Icon = ICON_VISUALS })
+local BotEspSection = BotPage:Section({ Name = "ESP ботов", Tab = "Боты", Side = 1 })
+local BotHitSection = BotPage:Section({ Name = "Хитбоксы НПС", Tab = "Боты", Side = 2 })
+
+UIRegistry.NPCEsp = BotEspSection:Toggle({
+    Name = "ESP ботов (оранжевый)",
+    Flag = "NPCEsp",
+    Default = false,
+    Callback = function(state)
+        S.NPC.ESP = state
+        journal("ESP БОТОВ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.NPCBox = BotEspSection:Toggle({
+    Name = "Боты: бокс",
+    Flag = "NPCBox",
+    Default = false,
+    Callback = function(state)
+        S.NPC.Box = state
+    end
+})
+
+UIRegistry.NPCName = BotEspSection:Toggle({
+    Name = "Боты: ник модели",
+    Flag = "NPCName",
+    Default = false,
+    Callback = function(state)
+        S.NPC.Name = state
+    end
+})
+
+UIRegistry.NPCItem = BotEspSection:Toggle({
+    Name = "Боты: предмет в руках",
+    Flag = "NPCItem",
+    Default = false,
+    Callback = function(state)
+        S.NPC.Item = state
+    end
+})
+
+UIRegistry.NPCDistance = BotEspSection:Toggle({
+    Name = "Боты: дистанция",
+    Flag = "NPCDistance",
+    Default = false,
+    Callback = function(state)
+        S.NPC.Distance = state
+    end
+})
+
+UIRegistry.NPCHealthBar = BotEspSection:Toggle({
+    Name = "Боты: хелсбар",
+    Flag = "NPCHealthBar",
+    Default = false,
+    Callback = function(state)
+        S.NPC.HealthBar = state
+    end
+})
+
+UIRegistry.NPCMaxDistance = BotEspSection:Slider({
+    Name = "Боты: Max Distance",
+    Flag = "NPCMaxDistance",
+    Default = 3000,
+    Min = 100,
+    Max = 3000,
+    Decimals = 50,
+    Suffix = "m",
+    Callback = function(Value)
+        S.NPC.MaxDistance = Value
+    end
+})
+
+UIRegistry.NPCChams = BotEspSection:Toggle({
+    Name = "Чамсы ботов (оранжевые, до потолка)",
+    Flag = "NPCChams",
+    Default = false,
+    Callback = function(state)
+        S.NPC.Chams = state
+        journal("ЧАМСЫ БОТОВ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.NPCChamsTransparency = BotEspSection:Slider({
+    Name = "Чамсы ботов: прозрачность",
+    Flag = "NPCChamsTransparency",
+    Default = 0.5,
+    Min = 0,
+    Max = 1,
+    Decimals = 0.05,
+    Suffix = "",
+    Callback = function(Value)
+        S.NPC.ChamsTransparency = Value
+    end
+})
+
+UIRegistry.NPCHitboxEnabled = BotHitSection:Toggle({
+    Name = "Хитбоксы НПС и ботов",
+    Flag = "NPCHitboxEnabled",
+    Default = false,
+    Callback = function(state)
+        S.NPC.HitboxEnabled = state
+        if state then
+            NpcHitboxAnnouncePending = true
+        end
+        print("[FUST] Хитбоксы НПС " .. (state and ("ВКЛ, размер " .. tostring(S.NPC.HitboxSize)) or "ВЫКЛ"))
+        journal("ХИТБОКС НПС " .. (state and ("ВКЛ (размер " .. tostring(S.NPC.HitboxSize) .. ")") or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.NPCHitboxSize = BotHitSection:Slider({
+    Name = "Размер хитбокса НПС",
+    Flag = "NPCHitboxSize",
+    Default = 9,
+    Min = 2,
+    Max = 15,
+    Decimals = 0.5,
+    Suffix = "",
+    Callback = function(Value)
+        S.NPC.HitboxSize = Value
+    end
+})
+
+UIRegistry.NPCHitboxTransparency = BotHitSection:Slider({
+    Name = "Прозрачность хитбокса НПС",
+    Flag = "NPCHitboxTransparency",
+    Default = 0.7,
+    Min = 0,
+    Max = 0.95,
+    Decimals = 0.05,
+    Suffix = "",
+    Callback = function(Value)
+        S.NPC.HitboxTransparency = Value
     end
 })
 
@@ -5852,6 +6038,11 @@ local Aim = {
     WallCheck = true,
     TeamCheck = false,
     Crosshair = false,
+    -- 0.26: кого аимить + авто-предикт
+    TargetsPlayers = true,   -- игроки
+    TargetsNPC = false,      -- боты и НПС
+    AutoPredict = false,     -- авто-упреждение под цель
+    AutoPredictK = 1,        -- коэффициент авто-упреждения
 }
 
 local AIM_PARTS = { "Head", "Torso", "Legs", "Random" }
@@ -5989,6 +6180,33 @@ UIRegistry.AimPrediction = AimSection:Slider({
     Suffix = "с",
     Callback = function(Value)
         Aim.Prediction = Value
+    end
+})
+
+-- 0.26: АВТО-ПРЕДИКТ — упреждение считается само под цель, которую
+-- взял аимбот: чем дальше цель, тем больше упреждение; скорость
+-- ботов и НПС сглаживается, чтобы их рывки не дёргали прицел.
+-- Ручной слайдер «Предикт» при включённом авто-предикте не используется.
+UIRegistry.AimAutoPredict = AimSection:Toggle({
+    Name = "Авто-предикт (подстраивается под цель)",
+    Flag = "AimAutoPredict",
+    Default = false,
+    Callback = function(state)
+        Aim.AutoPredict = state
+        journal("АВТО-ПРЕДИКТ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AimAutoPredictK = AimSection:Slider({
+    Name = "Авто-предикт: коэффициент",
+    Flag = "AimAutoPredictK",
+    Default = 1,
+    Min = 0.2,
+    Max = 3,
+    Decimals = 0.1,
+    Suffix = "x",
+    Callback = function(Value)
+        Aim.AutoPredictK = Value
     end
 })
 
@@ -6466,6 +6684,39 @@ UIRegistry.AimPriority = TargetSection:Dropdown({
     end
 })
 
+-- 0.26: кого аимить — игроки и/или боты с НПС. Мультидропдаун: тап по
+-- варианту включает/выключает его. Боты и НПС ищутся трекером (модели
+-- с Humanoid вне списка игроков).
+UIRegistry.AimTargets = TargetSection:Dropdown({
+    Name = "Кого аимить",
+    Items = { "Игроки", "Боты и НПС" },
+    Default = { "Игроки" },
+    Flag = "AimTargets",
+    Multi = true,
+    Callback = function(list)
+        local players, npc = false, false
+        if type(list) == "table" then
+            for _, v in ipairs(list) do
+                if v == "Игроки" then
+                    players = true
+                elseif v == "Боты и НПС" then
+                    npc = true
+                end
+            end
+        end
+        Aim.TargetsPlayers = players
+        Aim.TargetsNPC = npc
+        local labels = {}
+        if players then
+            table.insert(labels, "игроки")
+        end
+        if npc then
+            table.insert(labels, "боты/НПС")
+        end
+        journal("АИМ ЦЕЛИ: " .. (#labels > 0 and table.concat(labels, " + ") or "никого"))
+    end
+})
+
 -- ---- Отрисовка: FOV круг + прицел по центру ----
 -- УНИВЕРСАЛЬНОСТЬ: если в экзекуторе нет Drawing-библиотеки, ставим
 -- заглушки — скрипт продолжит работать (без оверлеев), а не упадёт.
@@ -6566,7 +6817,127 @@ local function wallBetween(fromPos, targetChar, targetPos)
     return Workspace:Raycast(fromPos, targetPos - fromPos, aimRayParams) ~= nil
 end
 
--- Возвращает part и точку наведения (уже с предиктом)
+-- ============ 0.26: ТРЕКЕР БОТОВ И НПС ============
+-- Боты и НПС — модели Workspace с Humanoid, которые не принадлежат
+-- игрокам. Собираем их в trackedNPCs: скан раз в секунду (отдельный
+-- поток, рендер не грузим) + мгновенная ловля новых моделей через
+-- DescendantAdded. Только ЧТЕНИЕ мира — ничего не пишем и не перехва-
+-- тываем, бан-риска как у ESP.
+local trackedNPCs = {}   -- [Model] = true
+local NPC_LastCount = 0  -- сколько НПС отслежено (диагностика)
+
+local function npcFeaturesActive()
+    return (S.NPC.ESP or S.NPC.Chams or S.NPC.HitboxEnabled
+        or (Aim.Enabled and Aim.TargetsNPC)) and true or false
+end
+
+local function isPlayerCharacter(model)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character == model then
+            return true
+        end
+    end
+    return false
+end
+
+local function tryTrackNPC(model)
+    if not model or not model:IsA("Model") or trackedNPCs[model] then
+        return
+    end
+
+    local okN, hum = pcall(function()
+        return model:FindFirstChildOfClass("Humanoid")
+    end)
+    if not okN or not hum then
+        return
+    end
+
+    local okR, root = pcall(function()
+        return model:FindFirstChild("HumanoidRootPart")
+    end)
+    if not okR or not root then
+        return
+    end
+
+    if isPlayerCharacter(model) then
+        return
+    end
+
+    trackedNPCs[model] = true
+end
+
+local function scanNPCContainer(container, depth)
+    local okS, children = pcall(function()
+        return container:GetChildren()
+    end)
+    if not okS or not children then
+        return
+    end
+    for _, inst in ipairs(children) do
+        if inst:IsA("Model") then
+            tryTrackNPC(inst)
+        elseif depth > 0 and (inst:IsA("Folder") or inst:IsA("WorldModel")) then
+            scanNPCContainer(inst, depth - 1)
+        end
+    end
+end
+
+-- фоновый скан: раз в секунду и только когда нужна хотя бы одна
+-- бот-функция; при перезапуске скрипта поток сам умирает (сессия)
+task.spawn(function()
+    while getgenv().FUST_SESSION == FUST_SESSION do
+        if npcFeaturesActive() then
+            pcall(function()
+                for model in pairs(trackedNPCs) do
+                    if not model.Parent or not model:IsDescendantOf(Workspace) then
+                        trackedNPCs[model] = nil
+                    end
+                end
+                scanNPCContainer(Workspace, 2)
+            end)
+        end
+        task.wait(1)
+    end
+end)
+
+-- новые модели ловим сразу; Humanoid мог ещё не доехать до модельки —
+-- секундный скан доберёт пропущенное
+pcall(function()
+    Library:Connect(Workspace.DescendantAdded, function(inst)
+        if npcFeaturesActive() and inst:IsA("Model") then
+            task.defer(tryTrackNPC, inst)
+        end
+    end)
+end)
+
+-- 0.26: АВТО-ПРЕДИКТ. Упреждение считается от дистанции (пуля летит
+-- не мгновенно): ~0.5с на 450м, жёсткие пределы сверху/снизу, коэффи-
+-- циентом подстраивается под оружие. У ботов и НПС скорость сглажива-
+-- ем экспоненциально — их дёрганые рывки не должны трясти прицел.
+local velEMA = {}          -- [root] = сглаженная AssemblyLinearVelocity
+local velEMALastClean = 0
+
+local function autoLead(dist)
+    return math.clamp(dist / 900, 0.1, 1.5) * math.clamp(Aim.AutoPredictK or 1, 0.1, 5)
+end
+
+local function getSmoothedVelocity(root, vel)
+    if not Aim.AutoPredict then
+        return vel
+    end
+    local old = velEMA[root]
+    if not old then
+        velEMA[root] = vel
+        return vel
+    end
+    local smooth = old:Lerp(vel, 0.35)
+    velEMA[root] = smooth
+    return smooth
+end
+
+-- Возвращает part, точку наведения (уже с упреждением) и тип цели.
+-- Упреждение считается ПОД ЦЕЛЬ: игрок — как настроено (или авто),
+-- бот/НПС — авто-упреждение со сглаженной скоростью.
 local function getAimTarget(camera)
     local char = LocalPlayer.Character
     local localRoot = char and char:FindFirstChild("HumanoidRootPart")
@@ -6578,15 +6949,68 @@ local function getAimTarget(camera)
     local look = camera.CFrame.LookVector
     local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-    local bestPart, bestPoint
+    local bestPart, bestPoint, bestType
     local bestScore = math.huge
 
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer
-            and Whitelist[plr.Name] == nil
-            and not (Aim.TeamCheck and plr.Team ~= nil and plr.Team == LocalPlayer.Team) then
+    local now = os.clock()
+    if now - velEMALastClean > 30 then
+        velEMALastClean = now
+        for root in pairs(velEMA) do
+            if not root.Parent then
+                velEMA[root] = nil
+            end
+        end
+    end
 
-            local model = plr.Character
+    -- ИГРОКИ (вайтлист и команда учитываются)
+    if Aim.TargetsPlayers ~= false then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer
+                and Whitelist[plr.Name] == nil
+                and not (Aim.TeamCheck and plr.Team ~= nil and plr.Team == LocalPlayer.Team) then
+
+                local model = plr.Character
+                local hum = model and model:FindFirstChildOfClass("Humanoid")
+                local root = model and model:FindFirstChild("HumanoidRootPart")
+
+                if hum and root and hum.Health > 0 then
+                    local worldDist = (root.Position - localRoot.Position).Magnitude
+                    if worldDist <= Aim.Distance then
+                        local part = resolveAimPart(model, Aim.Part)
+                        if part then
+                            -- Предикт: упреждение по скорости корня (включая транспорт)
+                            local vel = root.AssemblyLinearVelocity
+                            local lead = Aim.AutoPredict and autoLead(worldDist) or Aim.Prediction
+                            local aimPos = part.Position + vel * lead
+
+                            -- Глубина через Dot: WorldToViewportPoint на Delta врёт по Z
+                            local toPoint = aimPos - camPos
+                            if toPoint:Dot(look) > 0 then
+                                local sp = camera:WorldToViewportPoint(aimPos)
+                                local screenDist = (center - Vector2.new(sp.X, sp.Y)).Magnitude
+
+                                if screenDist <= Aim.FOV then
+                                    if not Aim.WallCheck or not wallBetween(camPos, model, aimPos) then
+                                        local score = (Aim.Priority == "Дистанция") and worldDist or screenDist
+                                        if score < bestScore then
+                                            bestScore = score
+                                            bestPart = part
+                                            bestPoint = aimPos
+                                            bestType = "игрок"
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- БОТЫ И НПС (собирает трекер)
+    if Aim.TargetsNPC then
+        for model in pairs(trackedNPCs) do
             local hum = model and model:FindFirstChildOfClass("Humanoid")
             local root = model and model:FindFirstChild("HumanoidRootPart")
 
@@ -6595,11 +7019,11 @@ local function getAimTarget(camera)
                 if worldDist <= Aim.Distance then
                     local part = resolveAimPart(model, Aim.Part)
                     if part then
-                        -- Предикт: упреждение по скорости корня (включая транспорт)
-                        local vel = root.AssemblyLinearVelocity
-                        local aimPos = part.Position + vel * Aim.Prediction
+                        -- у ботов/НПС скорость сглаженная — рывки не уводят прицел
+                        local vel = getSmoothedVelocity(root, root.AssemblyLinearVelocity)
+                        local lead = Aim.AutoPredict and autoLead(worldDist) or Aim.Prediction
+                        local aimPos = part.Position + vel * lead
 
-                        -- Глубина через Dot: WorldToViewportPoint на Delta врёт по Z
                         local toPoint = aimPos - camPos
                         if toPoint:Dot(look) > 0 then
                             local sp = camera:WorldToViewportPoint(aimPos)
@@ -6612,6 +7036,7 @@ local function getAimTarget(camera)
                                         bestScore = score
                                         bestPart = part
                                         bestPoint = aimPos
+                                        bestType = "бот/НПС"
                                     end
                                 end
                             end
@@ -6622,7 +7047,7 @@ local function getAimTarget(camera)
         end
     end
 
-    return bestPart, bestPoint
+    return bestPart, bestPoint, bestType
 end
 
 -- Выгрузка отрисовки прошлого запуска
@@ -6756,6 +7181,20 @@ local function saveConfig()
                 Transparency = S.Bullets.Transparency,
                 Fade = S.Bullets.Fade,
             },
+            NPC = {
+                ESP = S.NPC.ESP,
+                Box = S.NPC.Box,
+                Name = S.NPC.Name,
+                Item = S.NPC.Item,
+                Distance = S.NPC.Distance,
+                HealthBar = S.NPC.HealthBar,
+                Chams = S.NPC.Chams,
+                ChamsTransparency = S.NPC.ChamsTransparency,
+                MaxDistance = S.NPC.MaxDistance,
+                HitboxEnabled = S.NPC.HitboxEnabled,
+                HitboxSize = S.NPC.HitboxSize,
+                HitboxTransparency = S.NPC.HitboxTransparency,
+            },
             Aim = {
                 Enabled = Aim.Enabled,
                 ShowFOV = Aim.ShowFOV,
@@ -6768,6 +7207,12 @@ local function saveConfig()
                 WallCheck = Aim.WallCheck,
                 TeamCheck = Aim.TeamCheck,
                 Crosshair = Aim.Crosshair,
+                Targets = (Aim.TargetsPlayers and Aim.TargetsNPC and { "Игроки", "Боты и НПС" })
+                    or (Aim.TargetsNPC and { "Боты и НПС" })
+                    or (Aim.TargetsPlayers and { "Игроки" })
+                    or {},
+                AutoPredict = Aim.AutoPredict,
+                AutoPredictK = Aim.AutoPredictK,
                 HotkeyKey = hotkeyKey,
                 HotkeyMode = hotkeyMode,
             },
@@ -6824,6 +7269,21 @@ local function loadConfig()
             applyFlag("ESPMaxDistance", cfg.ESP.MaxDistance)
         end
 
+        if type(cfg.NPC) == "table" then
+            applyFlag("NPCEsp", cfg.NPC.ESP)
+            applyFlag("NPCBox", cfg.NPC.Box)
+            applyFlag("NPCName", cfg.NPC.Name)
+            applyFlag("NPCItem", cfg.NPC.Item)
+            applyFlag("NPCDistance", cfg.NPC.Distance)
+            applyFlag("NPCHealthBar", cfg.NPC.HealthBar)
+            applyFlag("NPCChams", cfg.NPC.Chams)
+            applyFlag("NPCChamsTransparency", cfg.NPC.ChamsTransparency)
+            applyFlag("NPCMaxDistance", cfg.NPC.MaxDistance)
+            applyFlag("NPCHitboxEnabled", cfg.NPC.HitboxEnabled)
+            applyFlag("NPCHitboxSize", cfg.NPC.HitboxSize)
+            applyFlag("NPCHitboxTransparency", cfg.NPC.HitboxTransparency)
+        end
+
         local boxColor = tableToColor(cfg.BoxColor)
         if boxColor then
             S.ESPColors.Box = boxColor
@@ -6877,6 +7337,8 @@ local function loadConfig()
             applyFlag("AimDistance", a.Distance)
             applyFlag("AimSmooth", a.Smooth)
             applyFlag("AimPrediction", a.Prediction)
+            applyFlag("AimAutoPredict", a.AutoPredict)
+            applyFlag("AimAutoPredictK", a.AutoPredictK)
             applyFlag("AimWallCheck", a.WallCheck)
             applyFlag("AimTeamCheck", a.TeamCheck)
             applyFlag("AimCrosshair", a.Crosshair)
@@ -6887,6 +7349,10 @@ local function loadConfig()
             end
             if a.Priority == "Прицел" or a.Priority == "Дистанция" then
                 applyFlag("AimPriority", a.Priority)
+            end
+            -- 0.26: цели аима (мультидропдаун) и авто-предикт
+            if type(a.Targets) == "table" then
+                applyFlag("AimTargets", a.Targets)
             end
 
             -- 0.24: восстанавливаем клавишу аимбота (только ПК; без вызова колбэка)
@@ -6986,6 +7452,60 @@ local espDrawings = {}
 local hitboxOriginals = {}  -- player -> оригинальные параметры HumanoidRootPart
 local ChamsCreateBlocked = false  -- V11: если игра блокирует Highlight — не спамим созданием
 
+-- 0.26: отрисовка для ботов и НПС — та же Drawing-система, отдельный
+-- реестр (ключ — модель, не игрок) и ОРАНЖЕВЫЙ цвет выделения
+local botEspDrawings = {}
+local npcHitboxOriginals = {}
+local NPC_COLOR = Color3.fromRGB(255, 145, 0)
+
+local function botEnsureDrawings(model)
+    local ed = botEspDrawings[model]
+    if not ed then
+        ed = {
+            Box = Drawing.new("Square"),
+            Name = Drawing.new("Text"),
+            Distance = Drawing.new("Text"),
+            Item = Drawing.new("Text"),
+            HealthBarBg = Drawing.new("Line"),
+            HealthBar = Drawing.new("Line"),
+            HealthText = Drawing.new("Text"),
+        }
+
+        ed.Box.Filled = false
+        ed.Box.Thickness = 1
+
+        for _, key in ipairs({ "Name", "Distance", "HealthText", "Item" }) do
+            ed[key].Center = true
+            ed[key].Outline = true
+            ed[key].Font = Drawing.Fonts.Plex
+        end
+        ed.Name.Size = 14
+        ed.Distance.Size = 13
+        ed.HealthText.Size = 11
+        ed.HealthText.Center = false
+        ed.Item.Size = 12
+
+        ed.HealthBarBg.Thickness = 3
+        ed.HealthBarBg.Color = Color3.fromRGB(0, 0, 0)
+        ed.HealthBar.Thickness = 1.5
+
+        botEspDrawings[model] = ed
+    end
+    return ed
+end
+
+local function botRemoveDrawings(model)
+    local ed = botEspDrawings[model]
+    if ed then
+        for _, obj in pairs(ed) do
+            pcall(function()
+                obj:Remove()
+            end)
+        end
+        botEspDrawings[model] = nil
+    end
+end
+
 -- ================== ТРАССЕРЫ ПУЛЬ (V21, стиль VOMAGLA) ==================
 -- Рендер взят из VOMAGLA: пул невидимых Parts с двумя Attachment и
 -- Beam (FaceCamera, текстура трассера, LightEmission=1). У каждой
@@ -7015,17 +7535,28 @@ local bulletTracks = {}   -- кандидаты и живые трассеры
 local bulletConn = nil
 local bulletOn = false
 
--- пул Beam-частей (как в VOMAGLA: часть переиспользуется, Beam настроен один раз)
-local bulletPool = {}
+-- 0.26: пул Beam-частей ДВУХ ВИДОВ:
+--   "ribbon" — классическая лента VOMAGLA (одна Beam между A0/A1);
+--   "square" — объёмный КВАДРАТНЫЙ трассер: 4 ребра-Beam по углам
+--              квадратного сечения + яркое ядро по центру. Сечение
+--              перпендикулярно полёту пули — труба выглядит объёмной.
+-- Часть переиспользуется, Beam настроены один раз при создании.
+local bulletPool = {}      -- { {Part = part, Kind = kind}, ... }
 local bulletPoolSize = 0
 
-local function bulletPoolGet()
+local function bulletPoolGet(kind)
     if bulletPoolSize > 0 then
-        local p = bulletPool[bulletPoolSize]
-        bulletPool[bulletPoolSize] = nil
-        bulletPoolSize = bulletPoolSize - 1
-        return p
+        for i = bulletPoolSize, 1, -1 do
+            local item = bulletPool[i]
+            if item and item.Kind == kind then
+                bulletPool[i] = bulletPool[bulletPoolSize]
+                bulletPool[bulletPoolSize] = nil
+                bulletPoolSize = bulletPoolSize - 1
+                return item.Part
+            end
+        end
     end
+
     local okP, p = pcall(function()
         local part = Instance.new("Part")
         part.Anchored = true
@@ -7035,6 +7566,50 @@ local function bulletPoolGet()
         part.CastShadow = false
         part.Transparency = 1
         part.Size = Vector3.new(0.1, 0.1, 0.1)
+
+        if kind == "square" then
+            -- КВАДРАТНЫЙ: ядро (C0/C1) + 4 ребра по углам (E1..E4)
+            local c0 = Instance.new("Attachment")
+            c0.Name = "C0"
+            c0.Parent = part
+            local c1 = Instance.new("Attachment")
+            c1.Name = "C1"
+            c1.Parent = part
+
+            local core = Instance.new("Beam")
+            core.Name = "Core"
+            core.Attachment0 = c0
+            core.Attachment1 = c1
+            core.FaceCamera = true
+            core.LightEmission = 1
+            core.LightInfluence = 0
+            core.Enabled = false
+            core.Parent = part
+
+            for idx, corner in ipairs({ { 1, 1 }, { -1, 1 }, { -1, -1 }, { 1, -1 } }) do
+                local a0 = Instance.new("Attachment")
+                a0.Name = "E" .. idx .. "A"
+                a0.Parent = part
+                local a1 = Instance.new("Attachment")
+                a1.Name = "E" .. idx .. "B"
+                a1.Parent = part
+
+                local b = Instance.new("Beam")
+                b.Name = "E" .. idx
+                b.Attachment0 = a0
+                b.Attachment1 = a1
+                b.FaceCamera = false
+                b.LightEmission = 1
+                b.LightInfluence = 0
+                b.Enabled = false
+                b.Parent = part
+            end
+
+            part:SetAttribute("PetuhKind", "square")
+            return part
+        end
+
+        -- классическая лента (стиль VOMAGLA)
         local a0 = Instance.new("Attachment")
         a0.Name = "A0"
         a0.Parent = part
@@ -7052,6 +7627,7 @@ local function bulletPoolGet()
         b.TextureSpeed = 2
         b.Enabled = false
         b.Parent = part
+        part:SetAttribute("PetuhKind", "ribbon")
         return part
     end)
     if okP then
@@ -7060,25 +7636,90 @@ local function bulletPoolGet()
     return nil
 end
 
-local function bulletPoolRelease(p)
+local function bulletPoolRelease(p, kind)
     if p then
         pcall(function()
             p.Parent = nil
         end)
         bulletPoolSize = bulletPoolSize + 1
-        bulletPool[bulletPoolSize] = p
+        bulletPool[bulletPoolSize] = {
+            Part = p,
+            Kind = kind or p:GetAttribute("PetuhKind") or "ribbon",
+        }
     end
 end
 
 -- полное уничтожение пула (при выгрузке скрипта)
 local function bulletPoolDestroy()
     for i = 1, bulletPoolSize do
-        pcall(function()
-            bulletPool[i]:Destroy()
-        end)
+        local item = bulletPool[i]
+        if item and item.Part then
+            pcall(function()
+                item.Part:Destroy()
+            end)
+        end
     end
     bulletPool = {}
     bulletPoolSize = 0
+end
+
+-- 0.26: надевает на трассер деталь нужного вида (лента или квадрат)
+-- и собирает ссылки на Beam/Attachment'ы. false — если экзекутор не
+-- дал создать (тогда трассер просто не рисуется).
+local function setupTracerPart(t, square)
+    local kind = square and "square" or "ribbon"
+    local newPart = bulletPoolGet(kind)
+    if not newPart then
+        return false
+    end
+
+    local refsOk = true
+    local core = nil
+    local edges = {}
+    local signs = { { 1, 1 }, { -1, 1 }, { -1, -1 }, { 1, -1 } }
+
+    if square then
+        core = newPart:FindFirstChild("Core")
+        if not core then
+            refsOk = false
+        end
+        for idx = 1, 4 do
+            local b = newPart:FindFirstChild("E" .. idx)
+            local a0 = newPart:FindFirstChild("E" .. idx .. "A")
+            local a1 = newPart:FindFirstChild("E" .. idx .. "B")
+            if not (b and a0 and a1) then
+                refsOk = false
+            else
+                edges[idx] = { Beam = b, A0 = a0, A1 = a1 }
+            end
+        end
+    else
+        local b = newPart:FindFirstChild("B")
+        local a0 = newPart:FindFirstChild("A0")
+        local a1 = newPart:FindFirstChild("A1")
+        if not (b and a0 and a1) then
+            refsOk = false
+        else
+            t.Beam = b
+            t.A0 = a0
+            t.A1 = a1
+        end
+    end
+
+    if not refsOk then
+        pcall(function()
+            newPart:Destroy()
+        end)
+        return false
+    end
+
+    t.BeamPart = newPart
+    t.Kind = kind
+    if square then
+        t.Sq = { Core = core, Edges = edges, Signs = signs }
+    end
+    newPart.Parent = Workspace
+    return true
 end
 
 -- ищем создателя пули: ObjectValue-тег или атрибут Player/Creator/Owner
@@ -7118,7 +7759,17 @@ local function clearBulletDrawings()
                     t.Beam.Enabled = false
                 end)
             end
-            bulletPoolRelease(t.BeamPart)
+            if t.Sq then
+                for _, e in ipairs(t.Sq.Edges) do
+                    pcall(function()
+                        e.Beam.Enabled = false
+                    end)
+                end
+                pcall(function()
+                    t.Sq.Core.Enabled = false
+                end)
+            end
+            bulletPoolRelease(t.BeamPart, t.Kind)
         end
     end
     bulletTracks = {}
@@ -7248,19 +7899,9 @@ local function updateBullets()
                         t.Promoted = true
                         t.IsTeam = cr ~= nil and cr.Team ~= nil and cr.Team == LocalPlayer.Team
                         t.Origin = pos - seg.Unit * dist * 2
-                        t.BeamPart = bulletPoolGet()
-                        if not t.BeamPart then
+                        -- 0.26: вид трассера — лента (как было) или «Квадратный»
+                        if not setupTracerPart(t, (S.Bullets.Style or "Луч") == "Квадратный") then
                             table.remove(bulletTracks, i)
-                        else
-                            t.BeamPart.Parent = Workspace
-                            t.Beam = t.BeamPart:FindFirstChild("B")
-                            t.A0 = t.BeamPart:FindFirstChild("A0")
-                            t.A1 = t.BeamPart:FindFirstChild("A1")
-                            if t.Beam then
-                                t.Beam.Color = ColorSequence.new(t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY)
-                                t.Beam.Texture = BULLET_TEXTURES[S.Bullets.Style or "Луч"] or BULLET_TEXTURES["Луч"]
-                                t.Beam.Enabled = true
-                            end
                         end
                     end
                 elseif now - t.Born > 1 then
@@ -7290,19 +7931,95 @@ local function updateBullets()
             t.Died = now
         end
 
+        -- 0.26: вид сменили в меню на лету — пересобираем деталь трассера
+        if t.Promoted then
+            local wantSquare = (S.Bullets.Style or "Луч") == "Квадратный"
+            if (t.Kind == "square") ~= wantSquare then
+                if t.BeamPart then
+                    pcall(function()
+                        if t.Beam then
+                            t.Beam.Enabled = false
+                        end
+                        if t.Sq then
+                            for _, e in ipairs(t.Sq.Edges) do
+                                e.Beam.Enabled = false
+                            end
+                            t.Sq.Core.Enabled = false
+                        end
+                    end)
+                    bulletPoolRelease(t.BeamPart, t.Kind)
+                end
+                t.BeamPart = nil
+                t.Beam = nil
+                t.A0 = nil
+                t.A1 = nil
+                t.Sq = nil
+                if not setupTracerPart(t, wantSquare) then
+                    table.remove(bulletTracks, i)
+                end
+            end
+        end
+
         -- отрисовка (живые и тающие трассеры)
-        if t.Promoted and t.BeamPart and t.Beam then
+        if t.Promoted and t.BeamPart then
             local fade = math.max(S.Bullets.Fade or 1, 0.05)
             local age = t.Died and (now - t.Died) or 0
             if age > fade then
                 pcall(function()
-                    t.Beam.Enabled = false
+                    if t.Beam then
+                        t.Beam.Enabled = false
+                    end
+                    if t.Sq then
+                        for _, e in ipairs(t.Sq.Edges) do
+                            e.Beam.Enabled = false
+                        end
+                        t.Sq.Core.Enabled = false
+                    end
                 end)
-                bulletPoolRelease(t.BeamPart)
+                bulletPoolRelease(t.BeamPart, t.Kind)
                 t.BeamPart = nil
                 t.Beam = nil
+                t.A0 = nil
+                t.A1 = nil
+                t.Sq = nil
                 table.remove(bulletTracks, i)
-            else
+            elseif t.Kind == "square" and t.Sq then
+                -- 0.26: КВАДРАТНЫЙ трассер — объёмная квадратная «труба»:
+                -- 4 ребра по углам сечения (перпендикулярно полёту пули)
+                -- плюс яркое ядро. Крупнее полоски, чётко читается в бою.
+                pcall(function()
+                    local segV = t.Pos - t.Origin
+                    if segV.Magnitude > 0.01 then
+                        -- строго вертикальный полёт: lookAt вырождается,
+                        -- подменяем опорную ось
+                        local upVec = (math.abs(segV.Unit.Y) > 0.99) and Vector3.zAxis or Vector3.yAxis
+                        t.BeamPart.CFrame = CFrame.lookAt(t.Origin, t.Pos, upVec)
+                    end
+
+                    local half = math.clamp(width, 0.5, 5) * 0.75
+                    local edgeW = math.clamp(width * 0.1, 0.06, 0.3)
+                    local color = ColorSequence.new(t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY)
+                    local alpha = t.Died and (baseT + (1 - baseT) * math.clamp(age / fade, 0, 1)) or baseT
+                    local seq = NumberSequence.new(alpha)
+
+                    for idx, edge in ipairs(t.Sq.Edges) do
+                        local off = Vector3.new(t.Sq.Signs[idx][1] * half, t.Sq.Signs[idx][2] * half, 0)
+                        edge.A0.Position = off
+                        edge.A1.Position = off
+                        edge.Beam.Color = color
+                        edge.Beam.Transparency = seq
+                        edge.Beam.Width0 = edgeW
+                        edge.Beam.Width1 = edgeW
+                        edge.Beam.Enabled = true
+                    end
+
+                    t.Sq.Core.Color = color
+                    t.Sq.Core.Transparency = seq
+                    t.Sq.Core.Width0 = math.max(width * 0.35, 0.08)
+                    t.Sq.Core.Width1 = math.max(width * 0.35, 0.08)
+                    t.Sq.Core.Enabled = true
+                end)
+            elseif t.Beam then
                 pcall(function()
                     if t.A0 then
                         t.A0.WorldPosition = t.Origin
@@ -7310,6 +8027,7 @@ local function updateBullets()
                     if t.A1 then
                         t.A1.WorldPosition = t.Pos
                     end
+                    t.Beam.Color = ColorSequence.new(t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY)
                     if t.Died then
                         local progress = math.clamp(age / fade, 0, 1)
                         t.Beam.Transparency = NumberSequence.new(baseT + (1 - baseT) * progress)
@@ -7385,6 +8103,35 @@ end
 
 -- Габарит персонажа в студах (ширина, высота, глубина)
 local BOX_SIZE = Vector3.new(4, 6, 2.5)
+
+-- 0.26: полная приборка за одной моделью бота/НПС (ESP спрятать,
+-- чамсы убрать, хитбокс вернуть) — без уничтожения отрисовки
+local function botCleanupModel(model)
+    local ed = botEspDrawings[model]
+    if ed then
+        hideEspDrawings(ed)
+    end
+
+    local hl = model:FindFirstChild("PETUH_BotChams")
+    if hl then
+        pcall(function()
+            hl:Destroy()
+        end)
+    end
+
+    local orig = npcHitboxOriginals[model]
+    if orig then
+        pcall(function()
+            if orig.Root and orig.Root.Parent then
+                orig.Root.Size = orig.Size
+                orig.Root.Transparency = orig.Transparency
+                orig.Root.CanCollide = orig.CanCollide
+                orig.Root.CanQuery = orig.CanQuery
+            end
+        end)
+        npcHitboxOriginals[model] = nil
+    end
+end
 
 -- Проецирует 8 углов 3D-габарита персонажа на экран.
 -- Возвращает левый-верхний угол и размер в пикселях, либо nil,
@@ -7498,7 +8245,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
         AR_LastStateJournal = jnow
         pcall(function()
             journal(string.format(
-                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d дрифт=%d) АТ=%d (крен=%d поз=%d дрожь=%d) фб=%d нг=%d нд=%d трассеры=%d",
+                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d дрифт=%d) АТ=%d (крен=%d поз=%d дрожь=%d) фб=%d нг=%d нд=%d трассеры=%d нпс-есп=%d нпс-чамсы=%d нпс-хитбокс=%d автопредикт=%d",
                 Aim.Enabled and 1 or 0,
                 tostring(Aim.Part),
                 tostring(Aim.Priority),
@@ -7516,7 +8263,11 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 S.FullBright and 1 or 0,
                 S.NoGrass and 1 or 0,
                 S.NoDecoration and 1 or 0,
-                S.Bullets.Enabled and 1 or 0
+                S.Bullets.Enabled and 1 or 0,
+                S.NPC.ESP and 1 or 0,
+                S.NPC.Chams and 1 or 0,
+                S.NPC.HitboxEnabled and 1 or 0,
+                Aim.AutoPredict and 1 or 0
             ))
         end)
     end
@@ -7577,11 +8328,13 @@ renderConnection = RunService.RenderStepped:Connect(function()
             end
 
             ---------------- Chams (V11: pcall-защита) + чамсы хитбокса (V13) ----------------
+            -- 0.26: чамсы — ДО ПОТОЛКА: привязка к «Max Distance» снята.
+            -- Highlight (AlwaysOnTop) рисуется на любой дистанции, так что
+            -- подсветка видна и на 2000, и на 3000+ метров.
             local highlight = char and char:FindFirstChild("VOMAGLA_Chams")
             local hbHighlight = root and root:FindFirstChild("VOMAGLA_HitboxChams")
             if S.ESP.Enabled and S.ESP.Chams and char and root and myRoot then
-                local dist = (root.Position - myRoot.Position).Magnitude
-                if dist <= S.ESP.MaxDistance then
+                if true then
                     if not highlight and not ChamsCreateBlocked then
                         -- создание Highlight под pcall: если игра блокирует
                         -- инстанс, цикл кадра больше не умирает молча
@@ -7651,19 +8404,6 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         end)
                         hbHighlight = nil
                     end
-                else
-                    -- вне дистанции: чамсы игрока гасим, чамсы хитбокса убираем
-                    if highlight then
-                        pcall(function()
-                            highlight.Enabled = false
-                        end)
-                    end
-                    if hbHighlight then
-                        pcall(function()
-                            hbHighlight:Destroy()
-                        end)
-                        hbHighlight = nil
-                    end
                 end
             else
                 -- чамсы выключены: чамсы игрока гасим, чамсы хитбокса убираем
@@ -7683,11 +8423,23 @@ renderConnection = RunService.RenderStepped:Connect(function()
             ---------------- ESP ----------------
             if S.ESP.Enabled and char and root and myRoot and hum and hum.Health > 0 then
                 local dist = (root.Position - myRoot.Position).Magnitude
-                if dist <= S.ESP.MaxDistance then
+                -- 0.26: гистерезис 6% — на границе радиуса ESP больше
+                -- не мигает (рисуем чуть дальше лимита, гасим плавно)
+                if dist <= S.ESP.MaxDistance * 1.06 + 10 then
                     local topLeft, boxSize = getScreenBox(Camera, root)
 
-                    -- порог 1px: дальше ~1200м бокс уже 2-3px, но имя/дистанция должны жить
-                    if topLeft and boxSize.X >= 1 and boxSize.Y >= 1 then
+                    -- 0.26: фикс пропадания ESP на 1000-3000м. Раньше
+                    -- дальше ~1200м бокс сжимался меньше 1px и исчезал;
+                    -- теперь дотягиваем до минимального читаемого размера
+                    if topLeft then
+                        local MINW, MINH = 7, 10
+                        if boxSize.X < MINW or boxSize.Y < MINH then
+                            local cx, cy = topLeft.X + boxSize.X * 0.5, topLeft.Y + boxSize.Y * 0.5
+                            local w = math.max(boxSize.X, MINW)
+                            local h = math.max(boxSize.Y, MINH)
+                            topLeft = Vector2.new(cx - w * 0.5, cy - h * 0.5)
+                            boxSize = Vector2.new(w, h)
+                        end
                         local ed = ensureEspDrawings(player)
 
                         local pad = 2
@@ -7780,7 +8532,15 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         end
                     end
                 else
-                    removeEspDrawings(player)
+                    -- 0.26: за лимитом прячем сразу, а уничтожаем дальше
+                    -- (гистерезис) — у границы радиуса больше нет мерцания
+                    local ed = espDrawings[player]
+                    if ed then
+                        hideEspDrawings(ed)
+                    end
+                    if dist > S.ESP.MaxDistance * 1.25 + 50 then
+                        removeEspDrawings(player)
+                    end
                 end
             else
                 removeEspDrawings(player)
@@ -7788,11 +8548,248 @@ renderConnection = RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- ============ 0.26: БОТЫ И НПС — ESP / ЧАМСЫ / ХИТБОКСЫ ============
+    -- Тот же подход, что у игроков, но ключ — модель, цвет — оранжевый.
+    -- Хитбоксы НПС — отдельная функция, хитбоксы игроков не трогает.
+    local npcActive = S.NPC.ESP or S.NPC.Chams or S.NPC.HitboxEnabled
+        or (Aim.Enabled and Aim.TargetsNPC)
+    if npcActive then
+        local npcHitApplied = 0
+
+        for model in pairs(trackedNPCs) do
+            local gone = (not model.Parent) or (not model:IsDescendantOf(Workspace))
+            if gone then
+                botCleanupModel(model)
+                botRemoveDrawings(model)
+                trackedNPCs[model] = nil
+            else
+                local okN, hum = pcall(function()
+                    return model:FindFirstChildOfClass("Humanoid")
+                end)
+                local okR, root = pcall(function()
+                    return model:FindFirstChild("HumanoidRootPart")
+                end)
+
+                if not (okN and okR and hum and root) then
+                    botCleanupModel(model)
+                    botRemoveDrawings(model)
+                else
+                    ---------------- Хитбокс НПС ----------------
+                    local orig = npcHitboxOriginals[model]
+                    if not orig or orig.Root ~= root then
+                        orig = {
+                            Root = root,
+                            Size = root.Size,
+                            Transparency = root.Transparency,
+                            CanCollide = root.CanCollide,
+                            CanQuery = root.CanQuery,
+                        }
+                        npcHitboxOriginals[model] = orig
+                    end
+
+                    if S.NPC.HitboxEnabled and hum.Health > 0 then
+                        npcHitApplied = npcHitApplied + 1
+                        local targetSize = Vector3.new(S.NPC.HitboxSize, S.NPC.HitboxSize, S.NPC.HitboxSize)
+                        pcall(function()
+                            if root.Size ~= targetSize then
+                                root.Size = targetSize
+                            end
+                            root.Transparency = S.NPC.HitboxTransparency
+                            root.CanCollide = false
+                            root.CanQuery = true
+                        end)
+                    else
+                        pcall(function()
+                            if root.Size ~= orig.Size then
+                                root.Size = orig.Size
+                            end
+                            root.Transparency = orig.Transparency
+                            root.CanCollide = orig.CanCollide
+                            root.CanQuery = orig.CanQuery
+                        end)
+                    end
+
+                    ---------------- Чамсы НПС (оранжевые, до потолка) ----------------
+                    local botChams = model:FindFirstChild("PETUH_BotChams")
+                    if S.NPC.Chams then
+                        if not botChams and not ChamsCreateBlocked then
+                            local okH, created = pcall(function()
+                                local h = Instance.new("Highlight")
+                                h.Name = "PETUH_BotChams"
+                                h.Adornee = model
+                                h.Parent = model
+                                return h
+                            end)
+                            if okH and created then
+                                botChams = created
+                            else
+                                ChamsCreateBlocked = true
+                                warn("[FUST] Highlight заблокирован игрой — чамсы ботов отключены")
+                            end
+                        end
+
+                        if botChams then
+                            pcall(function()
+                                botChams.FillColor = NPC_COLOR
+                                botChams.OutlineColor = NPC_COLOR
+                                botChams.FillTransparency = math.clamp(S.NPC.ChamsTransparency, 0, 1)
+                                botChams.OutlineTransparency = math.clamp(S.NPC.ChamsTransparency * 0.5, 0, 1)
+                                botChams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                                botChams.Enabled = true
+                            end)
+                        end
+                    elseif botChams then
+                        pcall(function()
+                            botChams:Destroy()
+                        end)
+                    end
+
+                    ---------------- ESP НПС (оранжевый) ----------------
+                    if S.NPC.ESP and hum.Health > 0 and myRoot then
+                        local dist = (root.Position - myRoot.Position).Magnitude
+                        if dist <= S.NPC.MaxDistance * 1.06 + 10 then
+                            local topLeft, boxSize = getScreenBox(Camera, root)
+
+                            if topLeft then
+                                -- тот же фикс мелкого бокса, что у игроков
+                                local MINW, MINH = 7, 10
+                                if boxSize.X < MINW or boxSize.Y < MINH then
+                                    local cx, cy = topLeft.X + boxSize.X * 0.5, topLeft.Y + boxSize.Y * 0.5
+                                    local w = math.max(boxSize.X, MINW)
+                                    local h = math.max(boxSize.Y, MINH)
+                                    topLeft = Vector2.new(cx - w * 0.5, cy - h * 0.5)
+                                    boxSize = Vector2.new(w, h)
+                                end
+
+                                local ed = botEnsureDrawings(model)
+
+                                local pad = 2
+                                local bx = topLeft.X - pad
+                                local by = topLeft.Y - pad
+                                local bw = boxSize.X + pad * 2
+                                local bh = boxSize.Y + pad * 2
+                                local centerX = bx + bw * 0.5
+
+                                if S.NPC.Box then
+                                    ed.Box.Position = Vector2.new(bx, by)
+                                    ed.Box.Size = Vector2.new(bw, bh)
+                                    ed.Box.Color = NPC_COLOR
+                                    ed.Box.Visible = true
+                                else
+                                    ed.Box.Visible = false
+                                end
+
+                                if S.NPC.Name then
+                                    ed.Name.Text = model.Name
+                                    ed.Name.Position = Vector2.new(centerX, by - 18)
+                                    ed.Name.Color = NPC_COLOR
+                                    ed.Name.Visible = true
+                                else
+                                    ed.Name.Visible = false
+                                end
+
+                                if S.NPC.Distance then
+                                    ed.Distance.Text = math.floor(dist + 0.5) .. "m"
+                                    ed.Distance.Position = Vector2.new(centerX, by + bh + 4)
+                                    ed.Distance.Color = NPC_COLOR
+                                    ed.Distance.Visible = true
+                                else
+                                    ed.Distance.Visible = false
+                                end
+
+                                if S.NPC.Item then
+                                    local okTool, tool = pcall(function()
+                                        return model:FindFirstChildOfClass("Tool")
+                                    end)
+                                    if okTool and tool then
+                                        local itemY = by + bh + (S.NPC.Distance and 23 or 4)
+                                        ed.Item.Text = tool.Name
+                                        ed.Item.Position = Vector2.new(centerX, itemY)
+                                        ed.Item.Color = NPC_COLOR
+                                        ed.Item.Visible = true
+                                    else
+                                        ed.Item.Visible = false
+                                    end
+                                else
+                                    ed.Item.Visible = false
+                                end
+
+                                if S.NPC.HealthBar then
+                                    local maxHp = math.max(hum.MaxHealth, 1)
+                                    local pct = math.clamp(hum.Health / maxHp, 0, 1)
+                                    local barX = bx - 7
+
+                                    ed.HealthBarBg.From = Vector2.new(barX, by)
+                                    ed.HealthBarBg.To = Vector2.new(barX, by + bh)
+                                    ed.HealthBarBg.Visible = true
+
+                                    local fillTop = by + bh * (1 - pct)
+                                    ed.HealthBar.From = Vector2.new(barX, by + bh)
+                                    ed.HealthBar.To = Vector2.new(barX, fillTop)
+                                    ed.HealthBar.Color = Color3.fromRGB(
+                                        math.floor(255 - pct * 255),
+                                        math.floor(pct * 255),
+                                        0
+                                    )
+                                    ed.HealthBar.Visible = true
+
+                                    ed.HealthText.Text = tostring(math.floor(hum.Health + 0.5))
+                                    ed.HealthText.Position = Vector2.new(barX - 26, fillTop - 5)
+                                    ed.HealthText.Color = ed.HealthBar.Color
+                                    ed.HealthText.Visible = true
+                                else
+                                    ed.HealthBarBg.Visible = false
+                                    ed.HealthBar.Visible = false
+                                    ed.HealthText.Visible = false
+                                end
+                            else
+                                local ed = botEspDrawings[model]
+                                if ed then
+                                    hideEspDrawings(ed)
+                                end
+                            end
+                        else
+                            -- за лимитом ботов: прячем с гистерезисом
+                            local ed = botEspDrawings[model]
+                            if ed then
+                                hideEspDrawings(ed)
+                            end
+                            if dist > S.NPC.MaxDistance * 1.25 + 50 then
+                                botRemoveDrawings(model)
+                            end
+                        end
+                    else
+                        -- ESP выключен / бот мёртв: прячем, но не уничтожаем —
+                        -- бот заспавнится, и отрисовка вернётся без мигания
+                        local ed = botEspDrawings[model]
+                        if ed then
+                            hideEspDrawings(ed)
+                        end
+                    end
+                end
+            end
+        end
+
+        NpcHitboxAppliedCount = npcHitApplied
+    else
+        -- бот-функции выключены: прибираем следы (чамсы, хитбоксы, отрисовка)
+        for model in pairs(trackedNPCs) do
+            botCleanupModel(model)
+        end
+        NpcHitboxAppliedCount = 0
+    end
+
     -- V11: одноразовый отчёт — видно в консоли Delta, что цикл жив
     -- и хитбокс реально применяется
     if HitboxAnnouncePending then
         HitboxAnnouncePending = false
         print("[FUST] Хитбокс применён к " .. tostring(hitboxAppliedCount) .. " игрок(ам), размер " .. tostring(S.Hitbox.Size))
+    end
+
+    -- 0.26: одноразовый отчёт по хитбоксам НПС
+    if NpcHitboxAnnouncePending then
+        NpcHitboxAnnouncePending = false
+        print("[FUST] Хитбоксы НПС: применены к " .. tostring(NpcHitboxAppliedCount) .. " модел(ям), размер " .. tostring(S.NPC.HitboxSize))
     end
 end)
 
@@ -7852,6 +8849,30 @@ getgenv().FUST_RenderCleanup = function()
                 rhl:Destroy()
             end
         end
+    end)
+
+    -- 0.26: боты и НПС — отрисовка, чамсы, хитбоксы
+    pcall(function()
+        for model in pairs(botEspDrawings) do
+            botRemoveDrawings(model)
+        end
+    end)
+    pcall(function()
+        for model in pairs(trackedNPCs) do
+            local bhl = model:FindFirstChild("PETUH_BotChams")
+            if bhl then
+                bhl:Destroy()
+            end
+        end
+        for _, orig in pairs(npcHitboxOriginals) do
+            if orig.Root and orig.Root.Parent then
+                orig.Root.Size = orig.Size
+                orig.Root.Transparency = orig.Transparency
+                orig.Root.CanCollide = orig.CanCollide
+                orig.Root.CanQuery = orig.CanQuery
+            end
+        end
+        table.clear(npcHitboxOriginals)
     end)
 end
 
