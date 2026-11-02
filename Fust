@@ -1,35 +1,48 @@
 --[[
-    FUST Survival — FUST_FIXED V15 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V19 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V15 — ESP ПРЕДМЕТ (что в руках):
-    • Тумблер «ESP Предмет (что в руках)» в секции ESP: под боксом
-      игрока жёлтым пишется название предмета, который он держит
-      (Tool из персонажа). Если включена дистанция — предмет пишется
-      строкой ниже; если выключена — сразу под боксом.
-    • Фича чисто визуальная и безопасная: только ЧТЕНИЕ Tool из
-      чужого персонажа + текст Drawing API на экране. В игру не
-      пишется ничего — риск как у ESP имени/дистанции.
-    • Сохраняется в конфиг, пишется в журнал (ПРЕДМЕТ ВКЛ/ВЫКЛ).
+    НОВОЕ В V19 — АНТИ-ТРЯСКА ПРИ ВЫСТРЕЛЕ:
+    • Тумблер «Анти-тряска (выстрел)» в подвкладке Аимбот (под
+      анти-отдачей). Гасит дёрганье камеры при стрельбе. БЕЗ хуков —
+      тот же принцип бан-безопасности, что у анти-отдачи V14+:
+      только свои записи Camera.CFrame в рендер-цикле, сервер
+      камеру не видит и не реплицирует.
+    • Три слоя, у каждого свой тумблер:
+      - «АТ: крен» — игра наклоняет камеру вбок (roll); в шутере крен
+        от руки игрока не бывает, выпрямляем сразу;
+      - «АТ: дёрганье позиции» — камеру дёргает взад-вперёд; в окне
+        0.3с после выстрела позиция сглаживается (плавная ходьба
+        остаётся, дёрганье гасится);
+      - «АТ: дрожь прицела» — взгляд мелко мечется туда-сюда
+        (pitch/yaw); при смене направления ставится якорь «до дрожи»,
+        камера плавно возвращается к нему (как слой дрифта V17).
+    • Момент выстрела ловим подпиской на Tool.Activated/Deactivated;
+      если игра стреляет без них — слой дрожи сам распознает серию
+      метаний (3 смены направления подряд) и включится.
+    • Работает только с оружием в руках; с аимботом не дерётся
+      (взаимное исключение, как у слоя дрифта).
+    • Если при стрельбе прицел станет «ватным» (мешает вести цель) —
+      выключи «АТ: дрожь прицела», крен и позицию оставь.
 
-    РАНЕЕ (V2–V14):
-    1. V14 — безопасная анти-отдача (БЕЗ hookmetamethod: откат кика
-       камеры + сброс CameraOffset, отдельные тумблеры, порог кика)
-       + журнал FUST_journal.txt для диагностики банов (каждый тумблер
-       и снимок раз в минуту — при бане видно, что было включено).
-    2. V13 — слайдеры прозрачности хитбокса и чамсов (отдельно),
-       чамсы хитбокса (свой Highlight на кубе).
-    3. V12 — отозвана: анти-отдача через hookmetamethod — бан-риск.
-    4. V11 — починены хитбоксы и чамсы (зомби-рендер-цикл при
-       повторном execute; FUST_RenderCleanup + метка FUST_SESSION).
-    5. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
-    6. V9 — три подвкладки в Main: Функции, Аимбот, ESP.
-    7. V8 — одна вкладка, секции в две колонки; V7 — три вкладки.
-    8. V6 — конфиги FUST_config.json.
-    9. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
-    10. FullBright / NoDecoration / NoGrass с возвратом состояния.
-    11. Вайтлист — своя панель, TextBox с клавиатурой.
-    12. Аимбот: камера-лок, Smooth, предикт, FOV-круг, стены/команда.
-    13. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
+    РАНЕЕ (V2–V18):
+    1. V18 — NO FOG, деактивация кнопкой, трекинг пуль.
+    2. V17 — слой дрифта анти-отдачи: якорь + плавный возврат, двойной
+       проход за кадр (без задержки и рывков).
+    3. V16 — слой 3 анти-отдачи (плавная отдача, Bad Business).
+    4. V15 — ESP Предмет (что в руках).
+    5. V14 — безопасная анти-отдача (без hookmetamethod) +
+       журнал FUST_journal.txt для диагностики банов.
+    6. V13 — прозрачность хитбокса и чамсов, чамсы хитбокса.
+    7. V12 — отозвана (hookmetamethod — бан-риск).
+    8. V11 — починены хитбоксы и чамсы (зомби-цикл, FUST_SESSION).
+    9. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
+    10. V9 — три подвкладки в Main; V8 — две колонки; V7 — вкладки.
+    11. V6 — конфиги FUST_config.json.
+    12. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
+    13. FullBright / NoDecoration / NoGrass / NoFog с возвратом.
+    14. Вайтлист — своя панель, TextBox с клавиатурой.
+    15. Аимбот: камера-лок, Smooth, предикт, FOV-круг, стены/команда.
+    16. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -66,6 +79,12 @@ if getgenv().FUST_AimCleanup then
     pcall(getgenv().FUST_AimCleanup)
 end
 getgenv().FUST_AimCleanup = nil
+
+-- V19: связи анти-тряски прошлого запуска (Tool.Activated/Deactivated)
+if getgenv().FUST_ASCleanup then
+    pcall(getgenv().FUST_ASCleanup)
+end
+getgenv().FUST_ASCleanup = nil
 
 -- V11: метка текущего запуска. Все циклы сверяются с ней каждый кадр:
 -- если запущен более новый скрипт, старый цикл отключает САМ себя.
@@ -133,7 +152,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК v14 | place " .. tostring(game.PlaceId) .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК v19 | place " .. tostring(game.PlaceId) .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: загружаю библиотеку Avilon...")
 
@@ -268,6 +287,8 @@ local S = {
     FullBright = false,
     NoDecoration = false,
     NoGrass = false,
+    NoFog = false,
+    Bullets = { Enabled = false, Trail = true, Time = 2 },
 }
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
@@ -281,10 +302,37 @@ local AntiRecoil = {
     Enabled = false,    -- общий выключатель
     Rollback = true,    -- слой 1: откат резкого кика камеры вверх (конец кадра)
     Offset = true,      -- слой 2: сброс Humanoid.CameraOffset («тычок» камеры)
+    Drift = true,       -- слой 3 (V16): компенсация ПЛАВНОЙ отдачи (Bad Business)
+    DriftStrength = 1,  -- сила компенсации дрифта (0.1–1)
     Threshold = 1.2,    -- от какого угла (градусы) считать кик отдачей
 }
 local AR_SnapCF = nil          -- снапшот поворота камеры после камера-контроллера
 local AR_LastStateJournal = 0  -- когда в последний раз писали снимок в журнал
+local AR_LastPitch = nil       -- V16: pitch прошлого кадра (для слоя дрифта)
+local AR_DriftFrames = 0       -- V16: кадров подряд с ползущим вверх прицелом
+local AR_AimBusyUntil = 0      -- V16: аимбот ведёт цель до этого времени (дрифт ему не мешает)
+local AR_Anchor = nil          -- V17: прицел ДО начала отдачи (куда возвращаем камеру)
+local AR_LastDriftAt = 0       -- V17: время последнего подъёма — якорь живёт 0.25с после него
+
+-- V19: анти-тряска — гашение тряски камеры при выстреле (БЕЗ хуков,
+-- только свои коррекции камеры в рендере — как анти-отдача V14+).
+-- Работает только с оружием в руках.
+local AntiShake = {
+    Enabled = false,      -- общий выключатель
+    Roll = true,          -- слой А: крен — наклон камеры вбок (roll)
+    Position = true,      -- слой Б: дёрганье позиции камеры (окно выстрела)
+    Oscillation = true,   -- слой В: дрожь прицела — pitch/yaw туда-сюда
+}
+local AS_FireUntil = 0        -- V19: окно «недавний выстрел» (Activated/Deactivated)
+local AS_LastTool = nil       -- V19: инструмент прошлого кадра (подписка на выстрел)
+local AS_ToolConns = nil      -- V19: связи Activated/Deactivated текущего инструмента
+local AS_SmoothPos = nil      -- V19: сглаженная позиция камеры (слой Б)
+local AS_LastRawPitch = nil   -- V19: pitch прошлого прохода (слой В, сырой)
+local AS_LastLX, AS_LastLZ = nil, nil  -- V19: горизонт. взгляд прошлого прохода (дельта yaw)
+local AS_LastDp, AS_LastDy = nil, nil  -- V19: прошлые дельты pitch/yaw (детект флипов)
+local AS_PitchFlips, AS_YawFlips = 0, 0  -- V19: смен направления подряд
+local AS_AnchorLook = nil     -- V19: якорь «до дрожи» (куда вернуть взгляд)
+local AS_LastShakeAt = 0      -- V19: когда последний раз видели дрожь
 
 local COLOR_WHITELIST = Color3.fromRGB(0, 255, 0)
 local COLOR_DEFAULT = Color3.fromRGB(255, 255, 255)
@@ -369,6 +417,42 @@ UIRegistry.ESPItem = EspSection:Toggle({
     Callback = function(state)
         S.ESP.Item = state
         journal("ПРЕДМЕТ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+-- V18: трекинг пуль — летящие пули видно сквозь стены.
+-- Цвет определяется по создателю пули (тег/атрибут): враг — красный,
+-- тиммейт — жёлтый, свои пули не рисуем. Создатель неизвестен — красный.
+UIRegistry.BulletsEnabled = EspSection:Toggle({
+    Name = "ESP Пули (враги красные)",
+    Flag = "BulletsEnabled",
+    Default = false,
+    Callback = function(state)
+        S.Bullets.Enabled = state
+        journal("ПУЛИ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.BulletsTrail = EspSection:Toggle({
+    Name = "Пули: траектория (шлейф)",
+    Flag = "BulletsTrail",
+    Default = true,
+    Callback = function(state)
+        S.Bullets.Trail = state
+        journal("ПУЛИ-ШЛЕЙФ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.BulletsTime = EspSection:Slider({
+    Name = "Пули: время видимости",
+    Flag = "BulletsTime",
+    Default = 2,
+    Min = 0.5,
+    Max = 5,
+    Decimals = 0.1,
+    Suffix = "с",
+    Callback = function(Value)
+        S.Bullets.Time = Value
     end
 })
 
@@ -479,8 +563,11 @@ UIRegistry.NoDecoration = VisualSection:Toggle({
             if decor then
                 if state then
                     decor.Parent = nil
+                    -- V18: запоминаем ссылку — деактивация вернёт декорации в мир
+                    getgenv().FUST_DecorBackup = decor
                 else
                     decor.Parent = Workspace
+                    getgenv().FUST_DecorBackup = nil
                 end
             end
         end)
@@ -506,6 +593,33 @@ UIRegistry.NoGrass = VisualSection:Toggle({
                 sethiddenproperty(terrain, "Decoration", not state)
             else
                 warn("Your exploit does not support sethiddenproperty.")
+            end
+        end)
+    end
+})
+
+-- V18: убирает туман. Игра может вернуть туман (погода/зона) —
+-- поэтому в рендер-цикле туман держится выключенным каждый кадр.
+local NoFogBackup = nil
+
+UIRegistry.NoFog = VisualSection:Toggle({
+    Name = "Убрать туман (No Fog)",
+    Flag = "NoFog",
+    Default = false,
+    Callback = function(state)
+        S.NoFog = state
+        journal("НОФОГ " .. (state and "ВКЛ" or "ВЫКЛ"))
+        pcall(function()
+            if state then
+                if not NoFogBackup then
+                    NoFogBackup = { FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart }
+                end
+                Lighting.FogEnd = 100000
+                Lighting.FogStart = 100000
+            elseif NoFogBackup then
+                Lighting.FogEnd = NoFogBackup.FogEnd
+                Lighting.FogStart = NoFogBackup.FogStart
+                NoFogBackup = nil
             end
         end)
     end
@@ -990,6 +1104,335 @@ UIRegistry.AntiRecoilThreshold = AimSection:Slider({
     end
 })
 
+-- V17: слой 3 — для игр с ПЛАВНОЙ отдачей (Bad Business и современные
+-- шутеры): прицел ползёт вверх маленькими порциями, фильтр кика это не
+-- видит. Работает через ЯКОРЬ: первый плавный подъём запоминает прицел
+-- до отдачи, дальше камера плавно (долей за кадр, без рывков)
+-- возвращается к якорю. Якорь живёт 0.25с после последнего подъёма и
+-- сбрасывается фликом/движением вниз. Если мешает плавно вести прицел
+-- вверх с оружием в руках — снизь «силу компенсации» или выключи слой.
+UIRegistry.AntiRecoilDrift = AimSection:Toggle({
+    Name = "АО: компенсация дрифта",
+    Flag = "AntiRecoilDrift",
+    Default = true,
+    Callback = function(state)
+        AntiRecoil.Drift = state
+        journal("АО дрифт " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiRecoilDriftStrength = AimSection:Slider({
+    Name = "АО: сила компенсации",
+    Flag = "AntiRecoilDriftStrength",
+    Default = 1,
+    Min = 0.1,
+    Max = 1,
+    Decimals = 0.05,
+    Suffix = "",
+    Callback = function(Value)
+        AntiRecoil.DriftStrength = Value
+    end
+})
+
+-- V19: АНТИ-ТРЯСКА — гасим тряску камеры при выстреле. Работает только
+-- с оружием в руках; момент выстрела ловим по Tool.Activated. Если при
+-- стрельбе станет тяжело вести прицел — выключи «дрожь прицела»,
+-- крен и позицию оставь.
+UIRegistry.AntiShakeEnabled = AimSection:Toggle({
+    Name = "Анти-тряска (выстрел)",
+    Flag = "AntiShakeEnabled",
+    Default = false,
+    Callback = function(state)
+        AntiShake.Enabled = state
+        journal("АНТИ-ТРЯСКА " .. (state and "ВКЛ" or "ВЫКЛ"))
+        print("[FUST] Анти-тряска " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiShakeRoll = AimSection:Toggle({
+    Name = "АТ: крен (наклон вбок)",
+    Flag = "AntiShakeRoll",
+    Default = true,
+    Callback = function(state)
+        AntiShake.Roll = state
+        journal("АТ крен " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiShakePosition = AimSection:Toggle({
+    Name = "АТ: дёрганье позиции",
+    Flag = "AntiShakePosition",
+    Default = true,
+    Callback = function(state)
+        AntiShake.Position = state
+        journal("АТ позиция " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+UIRegistry.AntiShakeOscillation = AimSection:Toggle({
+    Name = "АТ: дрожь прицела",
+    Flag = "AntiShakeOscillation",
+    Default = true,
+    Callback = function(state)
+        AntiShake.Oscillation = state
+        journal("АТ дрожь " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+-- V17: слой дрифта переработан — ЯКОРЬ + ПЛАВНЫЙ возврат вместо рывка.
+-- Почему по-новому: в V16 компенсация начиналась с 3-го кадра (задержка)
+-- и вычитала дрифт целиком одним рывком вниз. Теперь при первом плавном
+-- подъёме запоминается «якорь» (прицел до отдачи), и каждый кадр камера
+-- возвращается к якорю ДОЛЕЙ ошибки — экспоненциально, плавно.
+-- Проход идёт дважды за кадр (здесь и в главном рендер-цикле), поэтому
+-- без разницы, как именно игра пишет камеру — отдача гасится сразу.
+local function AR_DriftPass()
+    if not (AntiRecoil.Enabled and AntiRecoil.Drift) then
+        AR_LastPitch, AR_DriftFrames, AR_Anchor = nil, 0, nil
+        return
+    end
+    if os.clock() < AR_AimBusyUntil then
+        -- аимбот ведёт цель — дрифт ему не мешаем
+        AR_LastPitch, AR_DriftFrames, AR_Anchor = nil, 0, nil
+        return
+    end
+    local camera = Workspace.CurrentCamera
+    local myChar = LocalPlayer.Character
+    local myTool = myChar and myChar:FindFirstChildOfClass("Tool")
+    if not (camera and myTool) then
+        -- без оружия в руках отдачи нет — не мешаем смотреть вверх
+        AR_LastPitch, AR_DriftFrames, AR_Anchor = nil, 0, nil
+        return
+    end
+
+    pcall(function()
+        local pitch = camera.CFrame.LookVector.Y
+        local now = os.clock()
+
+        if AR_LastPitch then
+            local d = pitch - AR_LastPitch
+
+            if d < -0.00005 or d > math.rad(2.5) then
+                -- движение вниз или резкий флик вверх — это рука игрока
+                -- (или восстановление камеры самой игрой): якорь сбрасываем
+                AR_DriftFrames = 0
+                AR_Anchor = nil
+            elseif d > 0.0001 then
+                -- плавный подъём = отдача: ставим якорь на прицел до неё
+                AR_LastDriftAt = now
+                AR_DriftFrames = AR_DriftFrames + 1
+                if not AR_Anchor then
+                    AR_Anchor = pitch - d
+                end
+            else
+                -- тишина: держим якорь, только пока отдача «свежая» (0.25с) —
+                -- между выстрелами серии он умирать не должен
+                if now - AR_LastDriftAt > 0.25 then
+                    AR_DriftFrames = 0
+                    AR_Anchor = nil
+                end
+            end
+        end
+
+        AR_LastPitch = pitch
+
+        if AR_Anchor then
+            local err = pitch - AR_Anchor
+            if err > 0.0006 then
+                -- плавный возврат: доля ошибки за кадр, НЕ рывком.
+                -- сила 1 = 60% ошибки за кадр, сила 0.5 = 40%
+                local rate = 0.2 + 0.4 * math.clamp(AntiRecoil.DriftStrength, 0, 1)
+                local theta = math.asin(math.clamp(err * rate, -1, 1))
+                camera.CFrame = camera.CFrame * CFrame.Angles(-theta, 0, 0)
+                AR_LastPitch = camera.CFrame.LookVector.Y
+            end
+        end
+    end)
+end
+
+-- ==================== V19: АНТИ-ТРЯСКА (три слоя) ====================
+-- Гасим тряску камеры при выстреле. Без хуков: только свои записи
+-- Camera.CFrame в рендер-цикле (сервер камеру не видит — тот же
+-- принцип бан-безопасности, что у анти-отдачи V14+).
+-- Проход идёт дважды за кадр (как у дрифта): здесь — после bind-
+-- функций игры, второй раз в главном рендер-цикле — после её
+-- RenderStepped-коннектов.
+
+-- Подписка на выстрел: Tool.Activated/Deactivated открывают «окно
+-- выстрела» (0.3с), в котором работают слои позиции и дрожи.
+local function AS_BindTool(tool)
+    if tool == AS_LastTool then
+        return
+    end
+    if AS_ToolConns then
+        for _, c in ipairs(AS_ToolConns) do
+            pcall(function()
+                c:Disconnect()
+            end)
+        end
+    end
+    AS_ToolConns = nil
+    AS_LastTool = tool
+    if not tool then
+        return
+    end
+    local conns = {}
+    local function markFire()
+        if getgenv().FUST_SESSION ~= FUST_SESSION then
+            for _, c in ipairs(conns) do
+                pcall(function()
+                    c:Disconnect()
+                end)
+            end
+            return
+        end
+        AS_FireUntil = os.clock() + 0.3
+    end
+    table.insert(conns, tool.Activated:Connect(markFire))
+    table.insert(conns, tool.Deactivated:Connect(markFire))
+    AS_ToolConns = conns
+end
+
+getgenv().FUST_ASCleanup = function()
+    if AS_ToolConns then
+        for _, c in ipairs(AS_ToolConns) do
+            pcall(function()
+                c:Disconnect()
+            end)
+        end
+    end
+    AS_ToolConns = nil
+    AS_LastTool = nil
+end
+
+local function AS_Pass()
+    local camera = Workspace.CurrentCamera
+    local myChar = LocalPlayer.Character
+    local myTool = myChar and myChar:FindFirstChildOfClass("Tool")
+    if not (AntiShake.Enabled and camera and myTool) then
+        -- без оружия/камеры или выключено — не мешаем смотреть как угодно
+        AS_BindTool(nil)
+        AS_LastRawPitch, AS_LastDp, AS_LastDy = nil, nil, nil
+        AS_LastLX, AS_LastLZ = nil, nil
+        AS_AnchorLook, AS_SmoothPos = nil, nil
+        AS_PitchFlips, AS_YawFlips = 0, 0
+        return
+    end
+    AS_BindTool(myTool)
+
+    local aimBusy = os.clock() < AR_AimBusyUntil
+
+    pcall(function()
+        local cf = camera.CFrame
+        local look = cf.LookVector
+        local pos = cf.Position
+        local now = os.clock()
+        local firing = now < AS_FireUntil
+
+        -- СЛОЙ А: КРЕН — наклон камеры вбок. В шутере крен не делает ни
+        -- рука игрока, ни камера-контроллер — только эффекты игры.
+        if AntiShake.Roll and math.abs(look.Y) < 0.999 then
+            local roll = math.asin(math.clamp(cf.RightVector.Y, -1, 1))
+            if math.abs(roll) > math.rad(0.05) then
+                camera.CFrame = CFrame.lookAt(pos, pos + look)
+                cf = camera.CFrame
+            end
+        end
+
+        -- СЛОЙ Б: ПОЗИЦИЯ — дёрганье камеры взад-вперёд. Только в окне
+        -- выстрела: позиция сглаживается экспоненциально, плавное
+        -- движение (ходьба) остаётся, дёрганье гасится.
+        if AntiShake.Position then
+            if firing then
+                if AS_SmoothPos and (pos - AS_SmoothPos).Magnitude < 1.5 then
+                    AS_SmoothPos = AS_SmoothPos:Lerp(pos, 0.35)
+                    camera.CFrame = CFrame.new(AS_SmoothPos) * (cf - cf.Position)
+                    cf = camera.CFrame
+                else
+                    AS_SmoothPos = pos
+                end
+            else
+                AS_SmoothPos = pos
+            end
+        else
+            AS_SmoothPos = nil
+        end
+
+        -- СЛОЙ В: ДРОЖЬ ПРИЦЕЛА — взгляд мелко мечется туда-сюда.
+        -- Флип = дельта pitch/yaw сменила направление. При первом флипе
+        -- ставим якорь «до дрожи» и возвращаем камеру к нему долей за
+        -- проход (механика та же, что у слоя дрифта V17).
+        if AS_LastRawPitch then
+            local lx, lz = look.X, look.Z
+            local hh = lx * lx + lz * lz
+            local dp = look.Y - AS_LastRawPitch
+            local dyaw = 0
+            if AS_LastLX and hh > 0.04 and (AS_LastLX * AS_LastLX + AS_LastLZ * AS_LastLZ) > 0.04 then
+                local cross = lx * AS_LastLZ - lz * AS_LastLX
+                dyaw = math.asin(math.clamp(cross / hh, -1, 1))
+            end
+
+            if AntiShake.Oscillation and not aimBusy then
+                local bandP = math.abs(dp) > 0.0001 and math.abs(dp) < math.rad(2.5)
+                local bandY = math.abs(dyaw) > 0.0001 and math.abs(dyaw) < math.rad(2.5)
+                local flipP = bandP and AS_LastDp ~= nil and math.abs(AS_LastDp) < math.rad(2.5) and ((dp > 0) ~= (AS_LastDp > 0))
+                local flipY = bandY and AS_LastDy ~= nil and math.abs(AS_LastDy) < math.rad(2.5) and ((dyaw > 0) ~= (AS_LastDy > 0))
+                if flipP then
+                    AS_PitchFlips = AS_PitchFlips + 1
+                else
+                    AS_PitchFlips = 0
+                end
+                if flipY then
+                    AS_YawFlips = AS_YawFlips + 1
+                else
+                    AS_YawFlips = 0
+                end
+
+                if (flipP or flipY) and (firing or AS_PitchFlips >= 3 or AS_YawFlips >= 3) then
+                    if not AS_AnchorLook then
+                        local back = cf
+                        if bandP then
+                            back = back * CFrame.Angles(-dp, 0, 0)
+                        end
+                        if bandY then
+                            back = back * CFrame.Angles(0, -dyaw, 0)
+                        end
+                        AS_AnchorLook = back.LookVector
+                    end
+                    AS_LastShakeAt = now
+                    AS_FireUntil = math.max(AS_FireUntil, now + 0.2)
+                elseif not bandP and not bandY then
+                    -- тишина: якорь живёт 0.25с после последней дрожи
+                    if now - AS_LastShakeAt > 0.25 then
+                        AS_AnchorLook = nil
+                    end
+                end
+
+                if AS_AnchorLook and math.abs(AS_AnchorLook.Y) < 0.999 then
+                    local dotAng = math.acos(math.clamp(cf.LookVector:Dot(AS_AnchorLook), -1, 1))
+                    if dotAng > math.rad(6) then
+                        -- якорь устарел (игрок резко отвернулся) — не дёргаем
+                        AS_AnchorLook = nil
+                    elseif dotAng > 0.0006 then
+                        local target = CFrame.lookAt(cf.Position, cf.Position + AS_AnchorLook)
+                        camera.CFrame = cf:Lerp(target, 0.55)
+                    end
+                end
+            end
+
+            AS_LastDp = dp
+            AS_LastDy = dyaw
+        end
+
+        -- сырые значения для следующего прохода — ПОСЛЕ наших коррекций,
+        -- чтобы дельта не содержала собственную работу слоёв
+        local look2 = camera.CFrame.LookVector
+        AS_LastRawPitch = look2.Y
+        AS_LastLX = look2.X
+        AS_LastLZ = look2.Z
+    end)
+end
+
 -- Слой 1: снапшот поворота камеры сразу после камера-контроллера
 -- (вклад мышки уже учтён), откат кика — в самом конце кадра.
 -- Зомби-защита: при повторном execute шаг сам отвязывается по FUST_SESSION.
@@ -1017,6 +1460,17 @@ RunService:BindToRenderStep("FUST_AR_Restore", Enum.RenderPriority.Last.Value + 
         RunService:UnbindFromRenderStep("FUST_AR_Restore")
         return
     end
+
+    -- V17: слой дрифта — якорь + плавный возврат (общая функция).
+    -- Этот вызов ловит отдачу, которую игра пишет привязанными
+    -- функциями (BindToRenderStep); коннекты игры ловит второй проход
+    -- в главном рендер-цикле.
+    AR_DriftPass()
+
+    -- V19: анти-тряска — первый проход (bind-функции игры уже отработали)
+    AS_Pass()
+
+    -- слой 1: откат резкого КИКА камеры (позиция на месте, рывок вверх)
     if not (AntiRecoil.Enabled and AntiRecoil.Rollback) then
         return
     end
@@ -1242,6 +1696,9 @@ aimConnection = RunService.RenderStepped:Connect(function()
     fovCircle.Visible = Aim.ShowFOV
 
     if part and aimPos then
+        -- V16: пока аимбот ведёт цель, слой дрифта отключается —
+        -- иначе он примет плавное ведение вверх за отдачу и станет мешать
+        AR_AimBusyUntil = os.clock() + 0.15
         local alpha = math.clamp(1 / math.max(Aim.Smooth, 1), 0, 1)
         camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, aimPos), alpha)
     end
@@ -1314,6 +1771,12 @@ local function saveConfig()
             FullBright = S.FullBright,
             NoDecoration = S.NoDecoration,
             NoGrass = S.NoGrass,
+            NoFog = S.NoFog,
+            Bullets = {
+                Enabled = S.Bullets.Enabled,
+                Trail = S.Bullets.Trail,
+                Time = S.Bullets.Time,
+            },
             Aim = {
                 Enabled = Aim.Enabled,
                 ShowFOV = Aim.ShowFOV,
@@ -1331,7 +1794,15 @@ local function saveConfig()
                 Enabled = AntiRecoil.Enabled,
                 Rollback = AntiRecoil.Rollback,
                 Offset = AntiRecoil.Offset,
+                Drift = AntiRecoil.Drift,
+                DriftStrength = AntiRecoil.DriftStrength,
                 Threshold = AntiRecoil.Threshold,
+            },
+            AntiShake = {
+                Enabled = AntiShake.Enabled,
+                Roll = AntiShake.Roll,
+                Position = AntiShake.Position,
+                Oscillation = AntiShake.Oscillation,
             },
             Whitelist = wl,
         }
@@ -1391,12 +1862,28 @@ local function loadConfig()
         applyFlag("FullBright", cfg.FullBright)
         applyFlag("NoDecoration", cfg.NoDecoration)
         applyFlag("NoGrass", cfg.NoGrass)
+        applyFlag("NoFog", cfg.NoFog)
+
+        if type(cfg.Bullets) == "table" then
+            applyFlag("BulletsEnabled", cfg.Bullets.Enabled)
+            applyFlag("BulletsTrail", cfg.Bullets.Trail)
+            applyFlag("BulletsTime", cfg.Bullets.Time)
+        end
 
         if type(cfg.AntiRecoil) == "table" then
             applyFlag("AntiRecoilEnabled", cfg.AntiRecoil.Enabled)
             applyFlag("AntiRecoilRollback", cfg.AntiRecoil.Rollback)
             applyFlag("AntiRecoilOffset", cfg.AntiRecoil.Offset)
+            applyFlag("AntiRecoilDrift", cfg.AntiRecoil.Drift)
+            applyFlag("AntiRecoilDriftStrength", cfg.AntiRecoil.DriftStrength)
             applyFlag("AntiRecoilThreshold", cfg.AntiRecoil.Threshold)
+        end
+
+        if type(cfg.AntiShake) == "table" then
+            applyFlag("AntiShakeEnabled", cfg.AntiShake.Enabled)
+            applyFlag("AntiShakeRoll", cfg.AntiShake.Roll)
+            applyFlag("AntiShakePosition", cfg.AntiShake.Position)
+            applyFlag("AntiShakeOscillation", cfg.AntiShake.Oscillation)
         end
 
         if type(cfg.Aim) == "table" then
@@ -1485,11 +1972,264 @@ ConfigSection:Button({
     end
 })
 
+-- V18: полное выключение скрипта — чистит мир, возвращает визуалы,
+-- убирает меню. Логика в getgenv().FUST_Deactivate (конец файла).
+ConfigSection:Button({
+    Name = "ВЫКЛЮЧИТЬ СКРИПТ",
+    Callback = function()
+        pcall(function()
+            getgenv().FUST_Deactivate()
+        end)
+    end
+})
+
 -- ==================== ЛОГИКА ОТРИСОВКИ ESP И ХИТБОКСОВ ==================
 
 local espDrawings = {}
 local hitboxOriginals = {}  -- player -> оригинальные параметры HumanoidRootPart
 local ChamsCreateBlocked = false  -- V11: если игра блокирует Highlight — не спамим созданием
+
+-- ================== ТРЕКИНГ ПУЛЬ (V18) ==================
+-- Идея: если игра спавнит пули как Part — ловим новые мелкие части
+-- в Workspace (DescendantAdded), ждём движения (эффекты стоят, пули
+-- летят), рисуем точку на пуле + шлейф траектории (Drawing API).
+-- Цвет: враг — красный, тиммейт — жёлтый (по тегу/атрибуту создателя),
+-- свои пули не рисуем. Невидимые хитскан-пули без объекта не поймать.
+
+local BULLET_COLOR_ENEMY = Color3.fromRGB(255, 60, 60)
+local BULLET_COLOR_TEAM = Color3.fromRGB(255, 215, 0)
+
+local bulletTracks = {}   -- { Part, Last, Dot, Promoted, Born, Creator, IsTeam }
+local bulletSegs = {}     -- { Line, Born, DieAt } — сегменты шлейфа
+local bulletConn = nil
+
+-- ищем создателя пули: ObjectValue-тег или атрибут Player/Creator/Owner
+local function resolveBulletCreator(inst)
+    local okC, creator = pcall(function()
+        for _, ch in ipairs(inst:GetChildren()) do
+            if ch:IsA("ObjectValue") then
+                local v = ch.Value
+                if typeof(v) == "Instance" and v:IsA("Player") then
+                    return v
+                end
+            end
+        end
+        for _, attr in ipairs({ "Player", "Creator", "Owner", "Plr" }) do
+            local a = inst:GetAttribute(attr)
+            if a ~= nil then
+                if typeof(a) == "Instance" and a:IsA("Player") then
+                    return a
+                elseif type(a) == "string" then
+                    return Players:FindFirstChild(a)
+                end
+            end
+        end
+        return nil
+    end)
+    if okC then
+        return creator
+    end
+    return nil
+end
+
+local function clearBulletDrawings()
+    for _, t in ipairs(bulletTracks) do
+        if t.Dot then
+            pcall(function()
+                t.Dot:Remove()
+            end)
+        end
+    end
+    bulletTracks = {}
+    for _, s in ipairs(bulletSegs) do
+        pcall(function()
+            s.Line:Remove()
+        end)
+    end
+    bulletSegs = {}
+end
+
+-- вызывается каждый кадр из главного рендер-цикла
+local function updateBullets(camera)
+    local now = os.clock()
+
+    -- выключено — тихо прибираем за собой (один раз)
+    if not S.Bullets.Enabled then
+        if #bulletTracks > 0 or #bulletSegs > 0 then
+            clearBulletDrawings()
+        end
+        return
+    end
+
+    local camPos = camera.CFrame.Position
+    local camLook = camera.CFrame.LookVector
+
+    -- 1) живые пули: движение, точка, новый сегмент шлейфа
+    for i = #bulletTracks, 1, -1 do
+        local t = bulletTracks[i]
+        local part = t.Part
+
+        if not part.Parent then
+            -- пуля исчезла из мира — точку убираем, шлейф затухнет сам
+            if t.Dot then
+                pcall(function()
+                    t.Dot:Remove()
+                end)
+            end
+            table.remove(bulletTracks, i)
+        else
+            local pos = part.Position
+            local delta = (pos - t.Last).Magnitude
+
+            if not t.Promoted then
+                if delta > 0.3 then
+                    -- поехала — это пуля (эффекты за 0.6с так и не двинулись)
+                    t.Promoted = true
+                    t.Last = pos
+                    local d = Drawing.new("Circle")
+                    d.Radius = 4
+                    d.Filled = true
+                    d.Thickness = 1
+                    d.Color = t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY
+                    d.Visible = false
+                    t.Dot = d
+                elseif now - t.Born > 0.6 then
+                    table.remove(bulletTracks, i)
+                end
+            end
+
+            if t.Promoted then
+                -- создатель мог появиться позже (тег/атрибут дописали)
+                if not t.Creator then
+                    local cr = resolveBulletCreator(part)
+                    if cr then
+                        t.Creator = cr
+                        t.IsTeam = cr.Team ~= nil and cr.Team == LocalPlayer.Team
+                        if t.Dot then
+                            t.Dot.Color = t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY
+                        end
+                    end
+                end
+
+                local okProj, sp = pcall(function()
+                    if (pos - camPos):Dot(camLook) > 0 then
+                        local p = camera:WorldToViewportPoint(pos)
+                        return Vector2.new(p.X, p.Y)
+                    end
+                    return nil
+                end)
+
+                if t.Dot then
+                    if okProj and sp then
+                        t.Dot.Position = sp
+                        t.Dot.Visible = true
+                    else
+                        t.Dot.Visible = false
+                    end
+                end
+
+                if delta > 0.05 then
+                    local prev = t.Last
+                    t.Last = pos
+
+                    if S.Bullets.Trail then
+                        local okProjA, spA = pcall(function()
+                            if (prev - camPos):Dot(camLook) > 0 then
+                                local p = camera:WorldToViewportPoint(prev)
+                                return Vector2.new(p.X, p.Y)
+                            end
+                            return nil
+                        end)
+
+                        if okProj and sp and okProjA and spA then
+                            local line = Drawing.new("Line")
+                            line.Thickness = 1.25
+                            line.Color = t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY
+                            line.From = spA
+                            line.To = sp
+                            line.Visible = true
+                            table.insert(bulletSegs, { Line = line, Born = now, DieAt = now + S.Bullets.Time })
+                            -- бюджет рисования: старейшие сегменты умирают первыми
+                            while #bulletSegs > 500 do
+                                local old = table.remove(bulletSegs, 1)
+                                if old and old.Line then
+                                    pcall(function()
+                                        old.Line:Remove()
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- 2) шлейф: просроченное убираем, последние 40% жизни плавно тают
+    for i = #bulletSegs, 1, -1 do
+        local s = bulletSegs[i]
+        if now >= s.DieAt then
+            pcall(function()
+                s.Line:Remove()
+            end)
+            table.remove(bulletSegs, i)
+        else
+            local life = s.DieAt - s.Born
+            local progress = (now - s.Born) / math.max(life, 0.01)
+            if progress > 0.6 then
+                pcall(function()
+                    s.Line.Transparency = (progress - 0.6) / 0.4
+                end)
+            end
+        end
+    end
+end
+
+-- ловим новые части: мелкие (до 2.5 стад), не внутри персонажей
+bulletConn = Workspace.DescendantAdded:Connect(function(inst)
+    if not S.Bullets.Enabled then
+        return
+    end
+    if #bulletTracks > 40 then
+        return
+    end
+
+    local okTrack, isBullet, cr, isTeam = pcall(function()
+        if not inst:IsA("BasePart") then
+            return false
+        end
+        local sz = inst.Size
+        if math.max(sz.X, sz.Y, sz.Z) > 2.5 then
+            return false
+        end
+        -- не части персонажей (лимбы тоже мелкие — проверяем модель на гуманоида)
+        local model = inst:FindFirstAncestorOfClass("Model")
+        while model do
+            if model:FindFirstChildOfClass("Humanoid") then
+                return false
+            end
+            model = model:FindFirstAncestorOfClass("Model")
+        end
+        local creator = resolveBulletCreator(inst)
+        if creator == LocalPlayer then
+            return false -- свои пули не рисуем
+        end
+        local team = creator ~= nil and creator.Team ~= nil and creator.Team == LocalPlayer.Team
+        return true, creator, team
+    end)
+
+    if okTrack and isBullet then
+        table.insert(bulletTracks, {
+            Part = inst,
+            Last = inst.Position,
+            Dot = nil,
+            Promoted = false,
+            Born = os.clock(),
+            Creator = cr,
+            IsTeam = isTeam == true,
+        })
+    end
+end)
 
 local function removeEspDrawings(plr)
     local ed = espDrawings[plr]
@@ -1614,6 +2354,26 @@ renderConnection = RunService.RenderStepped:Connect(function()
         Lighting.GlobalShadows = false
     end
 
+    -- V17: второй проход слоя дрифта — выполняется ПОСЛЕ RenderStepped-
+    -- коннектов игры: если игра пишет отдачу коннектом, гасим в тот же кадр
+    AR_DriftPass()
+
+    -- V19: второй проход анти-тряски (после RenderStepped-коннектов игры)
+    AS_Pass()
+
+    -- V18: туман могла вернуть игра (погода/зона) — держим выключенным
+    if S.NoFog then
+        if Lighting.FogEnd < 100000 then
+            Lighting.FogEnd = 100000
+        end
+        if Lighting.FogStart < 100000 then
+            Lighting.FogStart = 100000
+        end
+    end
+
+    -- V18: трекинг пуль (точка на пуле + шлейф траектории)
+    updateBullets(Camera)
+
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
@@ -1633,7 +2393,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
         AR_LastStateJournal = jnow
         pcall(function()
             journal(string.format(
-                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d) фб=%d нг=%d нд=%d",
+                "СНЯТО: аим=%d (%s|%s) хитбокс=%d есп=%d чамсы=%d АО=%d (откат=%d оффсет=%d дрифт=%d) АТ=%d (крен=%d поз=%d дрожь=%d) фб=%d нг=%d нд=%d пули=%d",
                 Aim.Enabled and 1 or 0,
                 tostring(Aim.Part),
                 tostring(Aim.Priority),
@@ -1643,9 +2403,15 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 AntiRecoil.Enabled and 1 or 0,
                 AntiRecoil.Rollback and 1 or 0,
                 AntiRecoil.Offset and 1 or 0,
+                AntiRecoil.Drift and 1 or 0,
+                AntiShake.Enabled and 1 or 0,
+                AntiShake.Roll and 1 or 0,
+                AntiShake.Position and 1 or 0,
+                AntiShake.Oscillation and 1 or 0,
                 S.FullBright and 1 or 0,
                 S.NoGrass and 1 or 0,
-                S.NoDecoration and 1 or 0
+                S.NoDecoration and 1 or 0,
+                S.Bullets.Enabled and 1 or 0
             ))
         end)
     end
@@ -1954,6 +2720,13 @@ getgenv().FUST_RenderCleanup = function()
         end)
     end
 
+    -- V18: трекинг пуль — коннект и вся отрисовка
+    if bulletConn then
+        bulletConn:Disconnect()
+        bulletConn = nil
+    end
+    clearBulletDrawings()
+
     -- убираем ESP-отрисовку этого запуска
     for plr in pairs(espDrawings) do
         pcall(removeEspDrawings, plr)
@@ -1974,6 +2747,73 @@ getgenv().FUST_RenderCleanup = function()
             end
         end
     end)
+end
+
+-- V18: ПОЛНАЯ ДЕАКТИВАЦИЯ по кнопке — возвращает всё как было и убирает меню.
+-- Вызывается из кнопки «ВЫКЛЮЧИТЬ СКРИПТ» (Конфиги).
+getgenv().FUST_Deactivate = function()
+    pcall(function()
+        journal("ДЕАКТИВАЦИЯ: скрипт выключен кнопкой")
+    end)
+
+    -- 1) прибить маркер сессии: всё, что ещё живо, отключится само
+    getgenv().FUST_SESSION = {}
+
+    -- 2) свои циклы, шаги анти-отдачи и следы в мире
+    pcall(function()
+        getgenv().FUST_RenderCleanup()
+    end)
+    pcall(function()
+        getgenv().FUST_AimCleanup()
+    end)
+    pcall(function()
+        if getgenv().FUST_ASCleanup then
+            getgenv().FUST_ASCleanup()
+        end
+    end)
+    getgenv().FUST_ASCleanup = nil
+
+    -- 3) вернуть визуалы
+    pcall(function()
+        if FullBrightBackup then
+            Lighting.Brightness = FullBrightBackup.Brightness
+            Lighting.ClockTime = FullBrightBackup.ClockTime
+            Lighting.FogEnd = FullBrightBackup.FogEnd
+            Lighting.GlobalShadows = FullBrightBackup.GlobalShadows
+        end
+    end)
+    pcall(function()
+        if NoFogBackup then
+            Lighting.FogEnd = NoFogBackup.FogEnd
+            Lighting.FogStart = NoFogBackup.FogStart
+        end
+    end)
+    pcall(function()
+        local decor = getgenv().FUST_DecorBackup
+        if decor and decor.Parent == nil then
+            decor.Parent = Workspace
+        end
+    end)
+    pcall(function()
+        local terrain = Workspace:FindFirstChildOfClass("Terrain")
+        if terrain and sethiddenproperty then
+            sethiddenproperty(terrain, "Decoration", true)
+        end
+    end)
+
+    -- 4) убрать меню (Exit уничтожает оба ScreenGui и все коннекты библиотеки)
+    if getgenv().Library and getgenv().Library.Exit then
+        pcall(function()
+            getgenv().Library:Exit()
+        end)
+    end
+
+    getgenv().FUST_RenderCleanup = nil
+    getgenv().FUST_AimCleanup = nil
+    getgenv().FUST_Deactivate = nil
+    getgenv().FUST_DecorBackup = nil
+
+    print("[FUST] Скрипт полностью деактивирован. Заново execute — чтобы включить снова.")
 end
 
 Players.PlayerRemoving:Connect(function(player)
