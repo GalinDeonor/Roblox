@@ -1,44 +1,47 @@
 --[[
-    FUST Survival — FUST_FIXED V20 (VOMAGLA & Library / Avilon)
+    FUST Survival — FUST_FIXED V21 (VOMAGLA & Library / Avilon)
 
-    НОВОЕ В V20 — ТРАССЕРЫ ПУЛЬ ПЕРЕДЕЛАНЫ:
-    • Было: цепочки тонких сегментов — месиво из тонких полосок на
-      экране, в трекинг попадал любой мелкий лут/обломки, и выключалось
-      всё это не до конца.
-    • Стало: у каждой летящей пули ОДИН жирный трассер — линия от точки
-      выстрела до текущей позиции пули. Летит — линия тянется за ней;
-      исчезла или застряла — линия замирает и плавно тает.
-    • Детектор строгий: пуля = мелкая часть, летящая БЫСТРО (40+
-      стад/с) и ПО ПРЯМОЙ два кадра подряд. Лут, обломки и кувыркающийся
-      мусор больше не рисуются.
-    • Тумблер выключает всё мгновенно и полностью: слушатель отписывается,
-      все линии и точки удаляются в тот же кадр.
-    • Настройки: «Трассеры: толщина» (1–6 px) и «Трассеры: затухание»
-      (0.5–5 с). Цвета прежние: враг — красный, тиммейт — жёлтый, свои
-      пули не рисуются.
+    НОВОЕ В V21 — ТРАССЕРЫ В СТИЛЕ VOMAGLA + ПОЧИНЕННЫЙ NO FOG:
+    • Трассеры пуль теперь рисуются как в VOMAGLA: пул невидимых
+      частей с Beam-объектами (светящаяся текстура, FaceCamera,
+      ширина ползунком). У каждой летящей пули — одна линия от точки
+      выстрела до пули, тянется за ней; пуля исчезла или застряла —
+      линия плавно тает.
+    • Детекция своя (из V20, БЕЗ hookmetamethod — он дал бан в V12):
+      мелкая часть, летящая быстро и по прямой два кадра подряд.
+      Лут и обломки не рисуются, тумблер выключает всё мгновенно.
+    • Новый ползунок «Трассеры: прозрачность» (0–0.9), «толщина»
+      теперь в стадах (0.5–5, как ширина Beam в VOMAGLA).
+    • НЮАНС: Beam не виден сквозь стены — трассеры видны в прямой
+      видимости (в VOMAGLA они ведут себя точно так же).
+    • ПОЧИНЕН No Fog: старый код трогал только FogEnd/FogStart, а в
+      игре туман задаётся объектом Atmosphere — на него FogEnd/FogStart
+      НЕ действуют. Теперь каждый кадр гасим и Atmosphere (Density и
+      Haze), если игра возвращает туман.
 
-    РАНЕЕ (V2–V19):
-    1. V19 — анти-тряска при выстреле: крен / дёрганье позиции / дрожь
+    РАНЕЕ (V2–V20):
+    1. V20 — трассеры пуль переработаны: один трассер на пулю,
+       детектор «быстро + прямо», полное выключение.
+    2. V19 — анти-тряска при выстреле: крен / дёрганье позиции / дрожь
        прицела (три тумблера в подвкладке Аимбот).
-    2. V18 — NO FOG, деактивация кнопкой, трекинг пуль (в V20 переделан
-       в трассеры).
-    3. V17 — слой дрифта анти-отдачи: якорь + плавный возврат, двойной
+    3. V18 — NO FOG, деактивация кнопкой, трекинг пуль.
+    4. V17 — слой дрифта анти-отдачи: якорь + плавный возврат, двойной
        проход за кадр (без задержки и рывков).
-    4. V16 — слой 3 анти-отдачи (плавная отдача, Bad Business).
-    5. V15 — ESP Предмет (что в руках).
-    6. V14 — безопасная анти-отдача (без hookmetamethod) +
+    5. V16 — слой 3 анти-отдачи (плавная отдача, Bad Business).
+    6. V15 — ESP Предмет (что в руках).
+    7. V14 — безопасная анти-отдача (без hookmetamethod) +
        журнал FUST_journal.txt для диагностики банов.
-    7. V13 — прозрачность хитбокса и чамсов, чамсы хитбокса.
-    8. V12 — отозвана (hookmetamethod — бан-риск).
-    9. V11 — починены хитбоксы и чамсы (зомби-цикл, FUST_SESSION).
-    10. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
-    11. V9 — три подвкладки в Main; V8 — две колонки; V7 — вкладки.
-    12. V6 — конфиги FUST_config.json.
-    13. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
-    14. FullBright / NoDecoration / NoGrass / NoFog с возвратом.
-    15. Вайтлист — своя панель, TextBox с клавиатурой.
-    16. Аимбот: камера-лок, Smooth, предикт, FOV-круг, стены/команда.
-    17. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
+    8. V13 — прозрачность хитбокса и чамсов, чамсы хитбокса.
+    9. V12 — отозвана (hookmetamethod — бан-риск).
+    10. V11 — починены хитбоксы и чамсы (зомби-цикл, FUST_SESSION).
+    11. V10 — хитбоксы отвязаны от «Max Distance»; возврат размеров.
+    12. V9 — три подвкладки в Main; V8 — две колонки; V7 — вкладки.
+    13. V6 — конфиги FUST_config.json.
+    14. ESP Box — 8 углов 3D-габарита, глубина через Dot (баг Delta).
+    15. FullBright / NoDecoration / NoGrass / NoFog с возвратом.
+    16. Вайтлист — своя панель, TextBox с клавиатурой.
+    17. Аимбот: камера-лок, Smooth, предикт, FOV-круг, стены/команда.
+    18. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
 print("[FUST] 1/4: запуск скрипта...")
@@ -148,7 +151,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК v20 | place " .. tostring(game.PlaceId) .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК v21 | place " .. tostring(game.PlaceId) .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: загружаю библиотеку Avilon...")
 
@@ -284,7 +287,7 @@ local S = {
     NoDecoration = false,
     NoGrass = false,
     NoFog = false,
-    Bullets = { Enabled = false, Thickness = 2.5, Fade = 2 },
+    Bullets = { Enabled = false, Width = 1.5, Transparency = 0, Fade = 1 },
 }
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
@@ -418,11 +421,12 @@ UIRegistry.ESPItem = EspSection:Toggle({
     end
 })
 
--- V20: трассеры пуль — у каждой летящей пули одна жирная линия от точки
--- выстрела до пули, видно сквозь стены. Враг — красный, тиммейт —
--- жёлтый, свои пули не рисуются. Выключение убирает всё мгновенно.
+-- V21: трассеры пуль в стиле VOMAGLA — пул Beam-объектов со
+-- светящейся текстурой: у каждой летящей пули одна линия от точки
+-- выстрела до пули, тянется за ней, после гибели пули плавно тает.
+-- Видны в прямой видимости (Beam сквозь стены не рисуется).
 UIRegistry.BulletsEnabled = EspSection:Toggle({
-    Name = "Трассеры пуль (сквозь стены)",
+    Name = "Трассеры пуль (стиль VOMAGLA)",
     Flag = "BulletsEnabled",
     Default = false,
     Callback = function(state)
@@ -435,23 +439,35 @@ UIRegistry.BulletsEnabled = EspSection:Toggle({
     end
 })
 
-UIRegistry.BulletsThickness = EspSection:Slider({
+UIRegistry.BulletsWidth = EspSection:Slider({
     Name = "Трассеры: толщина",
-    Flag = "BulletsThickness",
-    Default = 2.5,
-    Min = 1,
-    Max = 6,
+    Flag = "BulletsWidth",
+    Default = 1.5,
+    Min = 0.5,
+    Max = 5,
     Decimals = 0.5,
-    Suffix = "px",
+    Suffix = "ст",
     Callback = function(Value)
-        S.Bullets.Thickness = Value
+        S.Bullets.Width = Value
+    end
+})
+
+UIRegistry.BulletsTransparency = EspSection:Slider({
+    Name = "Трассеры: прозрачность",
+    Flag = "BulletsTransparency",
+    Default = 0,
+    Min = 0,
+    Max = 0.9,
+    Decimals = 0.05,
+    Callback = function(Value)
+        S.Bullets.Transparency = Value
     end
 })
 
 UIRegistry.BulletsFade = EspSection:Slider({
     Name = "Трассеры: затухание",
     Flag = "BulletsFade",
-    Default = 2,
+    Default = 1,
     Min = 0.5,
     Max = 5,
     Decimals = 0.1,
@@ -1779,7 +1795,8 @@ local function saveConfig()
             NoFog = S.NoFog,
             Bullets = {
                 Enabled = S.Bullets.Enabled,
-                Thickness = S.Bullets.Thickness,
+                Width = S.Bullets.Width,
+                Transparency = S.Bullets.Transparency,
                 Fade = S.Bullets.Fade,
             },
             Aim = {
@@ -1871,7 +1888,8 @@ local function loadConfig()
 
         if type(cfg.Bullets) == "table" then
             applyFlag("BulletsEnabled", cfg.Bullets.Enabled)
-            applyFlag("BulletsThickness", cfg.Bullets.Thickness)
+            applyFlag("BulletsWidth", cfg.Bullets.Width)
+            applyFlag("BulletsTransparency", cfg.Bullets.Transparency)
             applyFlag("BulletsFade", cfg.Bullets.Fade)
         end
 
@@ -1994,21 +2012,92 @@ local espDrawings = {}
 local hitboxOriginals = {}  -- player -> оригинальные параметры HumanoidRootPart
 local ChamsCreateBlocked = false  -- V11: если игра блокирует Highlight — не спамим созданием
 
--- ================== ТРАССЕРЫ ПУЛЬ (V20) ==================
--- Полностью переделано: старый «трекинг пуль» рисовал цепочку тонких
--- сегментов (месиво из тонких полосок на экране), ловил любой мелкий
--- лут/обломки и выключался не до конца. Теперь у каждой летящей пули
--- ОДИН жирный трассер — линия от точки выстрела до текущей позиции
--- пули. Пуля летит — линия тянется за ней; пуля исчезла или застряла —
--- линия замирает и плавно тает. Выключение полное: слушатель
--- отписывается, все линии удаляются в тот же кадр.
+-- ================== ТРАССЕРЫ ПУЛЬ (V21, стиль VOMAGLA) ==================
+-- Рендер взят из VOMAGLA: пул невидимых Parts с двумя Attachment и
+-- Beam (FaceCamera, текстура трассера, LightEmission=1). У каждой
+-- летящей пули один трассер — линия от точки выстрела до текущей
+-- позиции пули, тянется за ней; пуля исчезла или застряла — линия
+-- плавно тает. Части пула: CanQuery/CanTouch выключены, чтобы не
+-- мешать рейкастам игры.
+-- Детекция осталась своя (строгий детектор V20, БЕЗ hookmetamethod —
+-- он дал бан в V12): мелкая часть, летящая быстро (40+ стад/с) и по
+-- прямой два кадра подряд. Лут и обломки не рисуются.
+-- ВАЖНО: Beam не рисуется сквозь стены — трассеры видны в прямой
+-- видимости (в VOMAGLA они ведут себя так же).
 
 local BULLET_COLOR_ENEMY = Color3.fromRGB(255, 60, 60)
 local BULLET_COLOR_TEAM = Color3.fromRGB(255, 215, 0)
+local BULLET_TEXTURE = "rbxassetid://12781852245"
 
 local bulletTracks = {}   -- кандидаты и живые трассеры
 local bulletConn = nil
 local bulletOn = false
+
+-- пул Beam-частей (как в VOMAGLA: часть переиспользуется, Beam настроен один раз)
+local bulletPool = {}
+local bulletPoolSize = 0
+
+local function bulletPoolGet()
+    if bulletPoolSize > 0 then
+        local p = bulletPool[bulletPoolSize]
+        bulletPool[bulletPoolSize] = nil
+        bulletPoolSize = bulletPoolSize - 1
+        return p
+    end
+    local okP, p = pcall(function()
+        local part = Instance.new("Part")
+        part.Anchored = true
+        part.CanCollide = false
+        part.CanQuery = false
+        part.CanTouch = false
+        part.CastShadow = false
+        part.Transparency = 1
+        part.Size = Vector3.new(0.1, 0.1, 0.1)
+        local a0 = Instance.new("Attachment")
+        a0.Name = "A0"
+        a0.Parent = part
+        local a1 = Instance.new("Attachment")
+        a1.Name = "A1"
+        a1.Parent = part
+        local b = Instance.new("Beam")
+        b.Name = "B"
+        b.Attachment0 = a0
+        b.Attachment1 = a1
+        b.FaceCamera = true
+        b.LightEmission = 1
+        b.LightInfluence = 0
+        b.TextureLength = 2
+        b.TextureSpeed = 2
+        b.Enabled = false
+        b.Parent = part
+        return part
+    end)
+    if okP then
+        return p
+    end
+    return nil
+end
+
+local function bulletPoolRelease(p)
+    if p then
+        pcall(function()
+            p.Parent = nil
+        end)
+        bulletPoolSize = bulletPoolSize + 1
+        bulletPool[bulletPoolSize] = p
+    end
+end
+
+-- полное уничтожение пула (при выгрузке скрипта)
+local function bulletPoolDestroy()
+    for i = 1, bulletPoolSize do
+        pcall(function()
+            bulletPool[i]:Destroy()
+        end)
+    end
+    bulletPool = {}
+    bulletPoolSize = 0
+end
 
 -- ищем создателя пули: ObjectValue-тег или атрибут Player/Creator/Owner
 local function resolveBulletCreator(inst)
@@ -2041,15 +2130,13 @@ end
 
 local function clearBulletDrawings()
     for _, t in ipairs(bulletTracks) do
-        if t.Tracer then
-            pcall(function()
-                t.Tracer:Remove()
-            end)
-        end
-        if t.Head then
-            pcall(function()
-                t.Head:Remove()
-            end)
+        if t.BeamPart then
+            if t.Beam then
+                pcall(function()
+                    t.Beam.Enabled = false
+                end)
+            end
+            bulletPoolRelease(t.BeamPart)
         end
     end
     bulletTracks = {}
@@ -2090,8 +2177,10 @@ local function onNewWorldPart(inst)
             LastDir = nil,
             Promoted = false,
             Origin = nil,
-            Tracer = nil,
-            Head = nil,
+            BeamPart = nil,
+            Beam = nil,
+            A0 = nil,
+            A1 = nil,
             Died = nil,
             IsTeam = false,
         })
@@ -2099,8 +2188,7 @@ local function onNewWorldPart(inst)
 end
 
 -- полное включение/выключение. Выключено — слушателя НЕТ вообще: новые
--- «пули» не ловятся, все линии удалены. Тумблер больше не может
--- «не выключить».
+-- «пули» не ловятся, все трассеры убраны. Тумблер не может «не выключить».
 local function setBulletsEnabled(on)
     on = on and true or false
     if on == bulletOn then
@@ -2120,8 +2208,9 @@ local function setBulletsEnabled(on)
 end
 FUST_BulletsSet = setBulletsEnabled
 
--- вызывается каждый кадр из главного рендер-цикла
-local function updateBullets(camera)
+-- вызывается каждый кадр из главного рендер-цикла (камера не нужна:
+-- Beam — мировой объект, не Drawing)
+local function updateBullets()
     local now = os.clock()
 
     -- страховка: выключено — тихо прибираем за собой (один раз)
@@ -2132,9 +2221,8 @@ local function updateBullets(camera)
         return
     end
 
-    local camPos = camera.CFrame.Position
-    local camLook = camera.CFrame.LookVector
-    local thickness = math.clamp(S.Bullets.Thickness or 2.5, 1, 6)
+    local width = math.clamp(S.Bullets.Width or 1.5, 0.1, 5)
+    local baseT = math.clamp(S.Bullets.Transparency or 0, 0, 0.95)
 
     for i = #bulletTracks, 1, -1 do
         local t = bulletTracks[i]
@@ -2177,17 +2265,20 @@ local function updateBullets(camera)
                         t.Promoted = true
                         t.IsTeam = cr ~= nil and cr.Team ~= nil and cr.Team == LocalPlayer.Team
                         t.Origin = pos - seg.Unit * dist * 2
-                        local col = t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY
-                        t.Tracer = Drawing.new("Line")
-                        t.Tracer.Thickness = thickness
-                        t.Tracer.Color = col
-                        t.Tracer.Visible = false
-                        t.Head = Drawing.new("Circle")
-                        t.Head.Radius = 3
-                        t.Head.Filled = true
-                        t.Head.Thickness = 1
-                        t.Head.Color = col
-                        t.Head.Visible = false
+                        t.BeamPart = bulletPoolGet()
+                        if not t.BeamPart then
+                            table.remove(bulletTracks, i)
+                        else
+                            t.BeamPart.Parent = Workspace
+                            t.Beam = t.BeamPart:FindFirstChild("B")
+                            t.A0 = t.BeamPart:FindFirstChild("A0")
+                            t.A1 = t.BeamPart:FindFirstChild("A1")
+                            if t.Beam then
+                                t.Beam.Color = ColorSequence.new(t.IsTeam and BULLET_COLOR_TEAM or BULLET_COLOR_ENEMY)
+                                t.Beam.Texture = BULLET_TEXTURE
+                                t.Beam.Enabled = true
+                            end
+                        end
                     end
                 elseif now - t.Born > 1 then
                     -- так и не полетела (лут/эффект) — выбрасываем
@@ -2217,50 +2308,34 @@ local function updateBullets(camera)
         end
 
         -- отрисовка (живые и тающие трассеры)
-        if t.Promoted and t.Tracer then
-            local fade = math.max(S.Bullets.Fade or 2, 0.05)
+        if t.Promoted and t.BeamPart and t.Beam then
+            local fade = math.max(S.Bullets.Fade or 1, 0.05)
             local age = t.Died and (now - t.Died) or 0
             if age > fade then
                 pcall(function()
-                    t.Tracer:Remove()
+                    t.Beam.Enabled = false
                 end)
-                pcall(function()
-                    t.Head:Remove()
-                end)
+                bulletPoolRelease(t.BeamPart)
+                t.BeamPart = nil
+                t.Beam = nil
                 table.remove(bulletTracks, i)
             else
-                local transp = t.Died and math.clamp(age / fade, 0, 1) or 0
-                local okA, a = pcall(function()
-                    if (t.Origin - camPos):Dot(camLook) > 0 then
-                        local p = camera:WorldToViewportPoint(t.Origin)
-                        return Vector2.new(p.X, p.Y)
+                pcall(function()
+                    if t.A0 then
+                        t.A0.WorldPosition = t.Origin
                     end
-                    return nil
+                    if t.A1 then
+                        t.A1.WorldPosition = t.Pos
+                    end
+                    if t.Died then
+                        local progress = math.clamp(age / fade, 0, 1)
+                        t.Beam.Transparency = NumberSequence.new(baseT + (1 - baseT) * progress)
+                    else
+                        t.Beam.Transparency = NumberSequence.new(baseT)
+                    end
+                    t.Beam.Width0 = width
+                    t.Beam.Width1 = width
                 end)
-                local okB, b = pcall(function()
-                    if (t.Pos - camPos):Dot(camLook) > 0 then
-                        local p = camera:WorldToViewportPoint(t.Pos)
-                        return Vector2.new(p.X, p.Y)
-                    end
-                    return nil
-                end)
-                if okA and okB and a and b then
-                    t.Tracer.From = a
-                    t.Tracer.To = b
-                    t.Tracer.Thickness = thickness
-                    t.Tracer.Transparency = transp
-                    t.Tracer.Visible = true
-                    if t.Head then
-                        t.Head.Position = b
-                        t.Head.Transparency = transp
-                        t.Head.Visible = not t.Died
-                    end
-                else
-                    t.Tracer.Visible = false
-                    if t.Head then
-                        t.Head.Visible = false
-                    end
-                end
             end
         end
     end
@@ -2396,7 +2471,9 @@ renderConnection = RunService.RenderStepped:Connect(function()
     -- V19: второй проход анти-тряски (после RenderStepped-коннектов игры)
     AS_Pass()
 
-    -- V18: туман могла вернуть игра (погода/зона) — держим выключенным
+    -- V21: туман могли вернуть (погода/зона) — держим выключенным.
+    -- FogEnd/FogStart НЕ действуют, если в Lighting стоит Atmosphere —
+    -- из-за этого No Fog не работал. Гасим и его (Density/Haze).
     if S.NoFog then
         if Lighting.FogEnd < 100000 then
             Lighting.FogEnd = 100000
@@ -2404,10 +2481,19 @@ renderConnection = RunService.RenderStepped:Connect(function()
         if Lighting.FogStart < 100000 then
             Lighting.FogStart = 100000
         end
+        local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atm then
+            if atm.Density > 0 then
+                atm.Density = 0
+            end
+            if atm.Haze > 0 then
+                atm.Haze = 0
+            end
+        end
     end
 
-    -- V20: трассеры пуль (линия от выстрела до пули + точка-голова)
-    updateBullets(Camera)
+    -- V21: трассеры пуль (Beam от выстрела до пули, стиль VOMAGLA)
+    updateBullets()
 
     local myChar = LocalPlayer.Character
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -2755,12 +2841,13 @@ getgenv().FUST_RenderCleanup = function()
         end)
     end
 
-    -- V20: трассеры пуль — коннект и вся отрисовка
+    -- V21: трассеры пуль — коннект, вся отрисовка и пул Beam-частей
     if bulletConn then
         bulletConn:Disconnect()
         bulletConn = nil
     end
     clearBulletDrawings()
+    bulletPoolDestroy()
 
     -- убираем ESP-отрисовку этого запуска
     for plr in pairs(espDrawings) do
