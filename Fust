@@ -1,9 +1,33 @@
 --[[
-    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.26
+    ПЬЯНЫЙ ПЕТУХ — FUST Survival 0.27
     Скрипт сделан на основе скрипта VOMAGLA (подход к трассерам
     пуль и ESP взят оттуда, спасибо автору VOMAGLA).
 
-    НОВОЕ В 0.26 — БОТЫ/НПС + АВТО-ПРЕДИКТ + «КВАДРАТНЫЙ» ТРАССЕР:
+    НОВОЕ В 0.27 — КАТЕГОРИИ НПС: ОХРАННИКИ / МИРНЫЕ / ЖИВОТНЫЕ /
+    СЛИПЕРЫ (ESP больше не помечает всех подряд):
+    • Раньше «ESP ботов» выделял ЛЮБОГО НПС. Теперь каждый НПС попадает
+      ровно в ОДНУ категорию — ESP не пересекаются, у каждой свой цвет:
+        – «Охранники (враждебные НПС)» — оранжевый; это НПС на РТ:
+          имя «Охранник» ИЛИ оружие в руках;
+        – «Мирные НПС» — зелёный; все остальные НПС из папки Npcs;
+        – «Животные» — красный; медведь, волк, олень, кабан (папка
+          Animals, теги FustAnimal/FustDino + имена моделей);
+        – «Слиперы (спящие игроки)» — голубой; тела игроков, оставшиеся
+          в мире после выхода: по меткам игры И по позе (лежит дольше
+          4 секунд — спит).
+    • По умолчанию включены только ОХРАННИКИ.
+    • У каждой категории свой колорпикер, цвет меняется на лету.
+    • Чамсы ботов красятся цветом категории (охранники — оранжевые,
+      дистанция по-прежнему до потолка).
+    • Распознавание по структуре самой игры (папки Npcs/Animals, теги
+      FustNpc/FustAnimal/FustDino) + по именам моделей.
+    • «Диагностика: лог НПС в консоль» — раз в 10 секунд печатает имя,
+      папку, теги и категорию каждого НПС. Если кого-то определило не
+      туда — пришли, что в логе, поправлю паттерны.
+    • БАН-БЕЗОПАСНОСТЬ: как и раньше — только чтение мира и рисование
+      на своём клиенте (Drawing/Highlight), в игру ничего не летит.
+
+    РАНЕЕ (0.26) — БОТЫ/НПС + АВТО-ПРЕДИКТ + «КВАДРАТНЫЙ» ТРАССЕР:
     • Починен «баганый» ползунок прозрачности: после отмены касания
       (Delta часто сам снимает тач) слайдер продолжал ехать от ЛЮБОГО
       касания экрана. Теперь хвост драга закрывается всегда, а шаг
@@ -64,7 +88,7 @@
     • Всё прежнее работает: ESP, чамсы, хитбоксы, аимбот, анти-отдача,
       анти-тряска, трассеры пуль (стили луча), No Fog, FullBright.
 
-    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, 0.26, ... (прошлые
+    С НУМЕРАЦИЕЙ: версии 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, ... (прошлые
     обозначения V2–V21 сохранены в истории ниже).
 
     РАНЕЕ (V2–0.22):
@@ -93,7 +117,7 @@
     20. GUI в CoreGui, лог запуска [FUST] 1/4...4/4.
 ]]
 
-print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.26...")
+print("[FUST] 1/4: запуск скрипта «Пьяный Петух» 0.27...")
 
 local ok, err = pcall(function()
 
@@ -213,7 +237,7 @@ local function journal(msg)
     end
 end
 
-journal("=== ЗАПУСК 0.26 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
+journal("=== ЗАПУСК 0.27 | place " .. tostring(game.PlaceId) .. " | экзекутор: " .. EXECUTOR_NAME .. " | игроков: " .. tostring(#Players:GetPlayers()) .. " ===")
 
 print("[FUST] 2/4: инициализирую встроенную библиотеку...")
 
@@ -5189,8 +5213,14 @@ local S = {
     NoFog = false,
     Bullets = { Enabled = false, Style = "Луч", Width = 1.5, Transparency = 0, Fade = 1 },
     -- 0.26: боты и НПС — модели с Humanoid вне списка игроков
+    -- 0.27: категории НПС — охранники / мирные / животные / слиперы
     NPC = {
         ESP = false,
+        CatGuards = true,     -- охранники (враждебные НПС с оружием)
+        CatPeaceful = false,  -- мирные НПС
+        CatAnimals = false,   -- животные (медведь, волк, олень, кабан)
+        CatSleepers = false,  -- слиперы (спящие игроки)
+        DebugLog = false,     -- диагностика: лог НПС в консоль
         Box = false,
         Name = false,
         Item = false,
@@ -5204,6 +5234,213 @@ local S = {
         HitboxTransparency = 0.7,
     },
 }
+
+-- ============ 0.27: КЛАССИФИКАТОР НПС (категории) ============
+-- Один НПС попадает РОВНО В ОДНУ категорию — ESP не пересекаются.
+-- Жёсткий порядок проверки: животное -> слипер -> охранник -> мирный.
+-- Опора на структуру игры: папки workspace.Npcs / workspace.Animals,
+-- теги CollectionService FustNpc / FustAnimal / FustDino (игра сама их
+-- вешает) и имена моделей. Только ЧТЕНИЕ мира — ничего не пишем.
+local CollectionService = game:GetService("CollectionService")
+
+local NPC_COLOR = Color3.fromRGB(255, 145, 0)  -- резервный цвет
+local NPC_CAT_COLORS = {
+    Guard    = Color3.fromRGB(255, 145, 0),   -- охранники — оранжевый
+    Peaceful = Color3.fromRGB(80, 255, 140),  -- мирные НПС — зелёный
+    Animal   = Color3.fromRGB(255, 80, 95),   -- животные — красный
+    Sleeper  = Color3.fromRGB(80, 190, 255),  -- слиперы — голубой
+}
+
+local NPC_ANIMAL_TAGS = { "FustAnimal", "FustDino", "Animal" }
+local NPC_NPC_TAGS = { "FustNpc", "Npc", "NPC" }
+local SLEEPER_TAGS = { "FustSleeper", "Sleeper", "Sleeping", "FustSleeping", "OfflineBody", "PlayerBody", "FustBody" }
+local SLEEPER_ATTRS = { "Sleeping", "IsSleeping", "Sleep", "Sleeper", "IsSleeper", "Offline", "IsOffline" }
+
+-- Паттерны имён. Кириллицу string.lower не меняет, поэтому для русских
+-- слов взяты куски БЕЗ первой буквы: «хранник» ловит и «Охранник»,
+-- и «охранник», и «ОХРАННИК» — регистр не важен.
+local ANIMAL_PATTERNS = { "едвед", "олк", "лен", "абан", "bear", "wolf", "deer", "boar", "hog" }
+local GUARD_PATTERNS = { "хранник", "храна", "вард", "guard", "андит", "ародер", "ейдер" }
+local SLEEPER_PATTERNS = { "sleeper", "пящ" }
+-- Оружие в руках — второй признак охранника (на РТ ходят с оружием)
+local WEAPON_PATTERNS = {
+    "втомат", "интовк", "интор", "истолет", "робовик", "ужь", "арабин",
+    "найперск", "улемет", "улемёт", "ранат", "ружи", "к-47",
+    "меч", "сабл", "катан",
+    "rifle", "pistol", "shotgun", "smg", "mp5", "m4a", "akm", "ak-47", "ak74",
+}
+
+local npcCategoryCache = {}    -- [Model] = { Cat = "...", Expire = время }
+local npcHorizontalSince = {}  -- [Model] = время, с которого модель лежит
+local NPC_CAT_TTL = 0.75       -- категория пересчитывается не чаще 2 раз/сек
+
+local function npcNameMatches(model, patterns)
+    local okN, name = pcall(function()
+        return string.lower(tostring(model.Name))
+    end)
+    if not okN then
+        return false
+    end
+    for _, pat in ipairs(patterns) do
+        if string.find(name, pat, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function npcHasAnyTag(model, tags)
+    for _, tag in ipairs(tags) do
+        local okT, has = pcall(CollectionService.HasTag, CollectionService, model, tag)
+        if okT and has then
+            return true
+        end
+    end
+    return false
+end
+
+-- Модель лежит внутри папки с одним из имён (любая глубина до Workspace)
+local function npcInsideFolder(model, names)
+    local p = model.Parent
+    local depth = 0
+    while p and p ~= Workspace and depth < 8 do
+        for _, n in ipairs(names) do
+            if p.Name == n then
+                return true
+            end
+        end
+        p = p.Parent
+        depth = depth + 1
+    end
+    return false
+end
+
+local function npcHasWeaponInHands(model)
+    local okT, tool = pcall(function()
+        return model:FindFirstChildOfClass("Tool")
+    end)
+    if okT and tool then
+        local okN, tname = pcall(function()
+            return string.lower(tostring(tool.Name))
+        end)
+        if okN and tname then
+            for _, pat in ipairs(WEAPON_PATTERNS) do
+                if string.find(tname, pat, 1, true) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Явные метки спящего игрока: тег / атрибут / BoolValue / имя / папка
+local function npcSleeperMarked(model, hum, root)
+    if npcHasAnyTag(model, SLEEPER_TAGS) then
+        return true
+    end
+    if npcInsideFolder(model, { "Sleepers", "Sleeper", "Bodies", "SleepingPlayers", "Спящие" }) then
+        return true
+    end
+    for _, inst in ipairs({ model, hum, root }) do
+        if inst then
+            for _, attr in ipairs(SLEEPER_ATTRS) do
+                local okA, v = pcall(inst.GetAttribute, inst, attr)
+                if okA and v == true then
+                    return true
+                end
+            end
+        end
+    end
+    local okC, children = pcall(model.GetChildren, model)
+    if okC and children then
+        for _, child in ipairs(children) do
+            if child:IsA("BoolValue") then
+                local cn = string.lower(tostring(child.Name))
+                if (string.find(cn, "sleep", 1, true) or string.find(cn, "пящ", 1, true))
+                    and child.Value == true then
+                    return true
+                end
+            end
+        end
+    end
+    if npcNameMatches(model, SLEEPER_PATTERNS) then
+        return true
+    end
+    return false
+end
+
+-- Возвращает: имя категории, включена ли она, цвет категории
+local function npcGetCategory(model, hum, root)
+    local now = os.clock()
+    local cached = npcCategoryCache[model]
+    if cached and cached.Cat and cached.Expire > now then
+        local on = (
+            (cached.Cat == "Guard" and S.NPC.CatGuards)
+            or (cached.Cat == "Peaceful" and S.NPC.CatPeaceful)
+            or (cached.Cat == "Animal" and S.NPC.CatAnimals)
+            or (cached.Cat == "Sleeper" and S.NPC.CatSleepers)
+        ) and true or false
+        return cached.Cat, on, NPC_CAT_COLORS[cached.Cat] or NPC_COLOR
+    end
+
+    local cat
+
+    local inNpcFolder = npcInsideFolder(model, { "Npcs", "NPCs", "NPC" })
+        or npcHasAnyTag(model, NPC_NPC_TAGS)
+    local inAnimalFolder = npcInsideFolder(model, { "Animals", "Animal" })
+        or npcHasAnyTag(model, NPC_ANIMAL_TAGS)
+
+    if inAnimalFolder or npcNameMatches(model, ANIMAL_PATTERNS) then
+        cat = "Animal"
+    elseif inNpcFolder then
+        -- НПС из папки игры: охранник — по имени или оружию в руках
+        if npcNameMatches(model, GUARD_PATTERNS) or npcHasWeaponInHands(model) then
+            cat = "Guard"
+        else
+            cat = "Peaceful"
+        end
+    else
+        -- Неизвестный гуманоид вне игроков — почти наверняка тело игрока
+        if npcSleeperMarked(model, hum, root) then
+            cat = "Sleeper"
+        else
+            -- Поза: спящее тело лежит. Живые игроки трекером не собира-
+            -- ются, НПС и животные отсечены выше — долго лежащая модель
+            -- это слипер (4 секунды, чтобы не ловить падения/оглушение)
+            local okU, upDot = pcall(function()
+                return root and root.CFrame.UpVector:Dot(Vector3.new(0, 1, 0)) or 1
+            end)
+            if okU and upDot and upDot < 0.45 then
+                if not npcHorizontalSince[model] then
+                    npcHorizontalSince[model] = now
+                end
+                if now - npcHorizontalSince[model] >= 4 then
+                    cat = "Sleeper"
+                end
+            else
+                npcHorizontalSince[model] = nil
+            end
+
+            if not cat and (npcNameMatches(model, GUARD_PATTERNS) or npcHasWeaponInHands(model)) then
+                cat = "Guard"
+            end
+            if not cat then
+                cat = "Peaceful"
+            end
+        end
+    end
+
+    npcCategoryCache[model] = { Cat = cat, Expire = now + NPC_CAT_TTL }
+
+    local on = (
+        (cat == "Guard" and S.NPC.CatGuards)
+        or (cat == "Peaceful" and S.NPC.CatPeaceful)
+        or (cat == "Animal" and S.NPC.CatAnimals)
+        or (cat == "Sleeper" and S.NPC.CatSleepers)
+    ) and true or false
+    return cat, on, NPC_CAT_COLORS[cat] or NPC_COLOR
+end
 
 local Whitelist = {}         -- имя игрока -> true (общий вайтлист)
 
@@ -5428,19 +5665,92 @@ UIRegistry.ESPMaxDistance = EspSection:Slider({
 
 -- ============ 0.26: СТРАНИЦА «БОТЫ И НПС» ============
 -- Боты и НПС — неигровые персонажи (модели с Humanoid вне списка
--- игроков). ESP и чамсы — оранжевые (цвет выделен под них), хитбоксы —
+-- игроков). 0.27 — КАТЕГОРИИ: охранники (оранжевый), мирные НПС
+-- (зелёный), животные (красный), слиперы (голубой). Один НПС попадает
+-- ровно в одну категорию — ESP не пересекаются. Хитбоксы —
 -- отдельная функция со своими настройками, хитбоксы игроков не трогает.
 local BotPage = Window:Page({ Name = "Боты и НПС", Icon = ICON_VISUALS })
 local BotEspSection = BotPage:Section({ Name = "ESP ботов", Tab = "Боты", Side = 1 })
 local BotHitSection = BotPage:Section({ Name = "Хитбоксы НПС", Tab = "Боты", Side = 2 })
 
 UIRegistry.NPCEsp = BotEspSection:Toggle({
-    Name = "ESP ботов (оранжевый)",
+    Name = "ESP ботов и НПС (мастер)",
     Flag = "NPCEsp",
     Default = false,
     Callback = function(state)
         S.NPC.ESP = state
         journal("ESP БОТОВ " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end
+})
+
+-- 0.27: КАТЕГОРИИ НПС — один НПС попадает ровно в одну категорию,
+-- ESP не пересекаются; у каждой категории свой цвет (колорпикер).
+-- По умолчанию включены только охранники — то, что просил.
+UIRegistry.NPCGuards = BotEspSection:Toggle({
+    Name = "Охранники (враждебные НПС)",
+    Flag = "NPCGuards",
+    Default = true,
+    Callback = function(state)
+        S.NPC.CatGuards = state
+    end
+})
+
+UIRegistry.NPCColorGuard = UIRegistry.NPCGuards:Colorpicker({
+    Flag = "NPCColorGuard",
+    Default = NPC_CAT_COLORS.Guard,
+    Callback = function(color)
+        NPC_CAT_COLORS.Guard = color
+    end
+})
+
+UIRegistry.NPCPeaceful = BotEspSection:Toggle({
+    Name = "Мирные НПС (зелёные)",
+    Flag = "NPCPeaceful",
+    Default = false,
+    Callback = function(state)
+        S.NPC.CatPeaceful = state
+    end
+})
+
+UIRegistry.NPCColorPeaceful = UIRegistry.NPCPeaceful:Colorpicker({
+    Flag = "NPCColorPeaceful",
+    Default = NPC_CAT_COLORS.Peaceful,
+    Callback = function(color)
+        NPC_CAT_COLORS.Peaceful = color
+    end
+})
+
+UIRegistry.NPCAnimals = BotEspSection:Toggle({
+    Name = "Животные: медведь, волк, олень, кабан",
+    Flag = "NPCAnimals",
+    Default = false,
+    Callback = function(state)
+        S.NPC.CatAnimals = state
+    end
+})
+
+UIRegistry.NPCColorAnimal = UIRegistry.NPCAnimals:Colorpicker({
+    Flag = "NPCColorAnimal",
+    Default = NPC_CAT_COLORS.Animal,
+    Callback = function(color)
+        NPC_CAT_COLORS.Animal = color
+    end
+})
+
+UIRegistry.NPCSleepers = BotEspSection:Toggle({
+    Name = "Слиперы (спящие игроки)",
+    Flag = "NPCSleepers",
+    Default = false,
+    Callback = function(state)
+        S.NPC.CatSleepers = state
+    end
+})
+
+UIRegistry.NPCColorSleeper = UIRegistry.NPCSleepers:Colorpicker({
+    Flag = "NPCColorSleeper",
+    Default = NPC_CAT_COLORS.Sleeper,
+    Callback = function(color)
+        NPC_CAT_COLORS.Sleeper = color
     end
 })
 
@@ -5503,7 +5813,7 @@ UIRegistry.NPCMaxDistance = BotEspSection:Slider({
 })
 
 UIRegistry.NPCChams = BotEspSection:Toggle({
-    Name = "Чамсы ботов (оранжевые, до потолка)",
+    Name = "Чамсы ботов (цвет категории, до потолка)",
     Flag = "NPCChams",
     Default = false,
     Callback = function(state)
@@ -5522,6 +5832,19 @@ UIRegistry.NPCChamsTransparency = BotEspSection:Slider({
     Suffix = "",
     Callback = function(Value)
         S.NPC.ChamsTransparency = Value
+    end
+})
+
+UIRegistry.NPCDebugLog = BotEspSection:Toggle({
+    Name = "Диагностика: лог НПС в консоль (раз в 10 сек)",
+    Flag = "NPCDebugLog",
+    Default = false,
+    Callback = function(state)
+        S.NPC.DebugLog = state
+        if state then
+            print("[FUST] Диагностика НПС: имена, папки, теги и категории пойдут в консоль")
+            journal("ДИАГНОСТИКА НПС ВКЛ")
+        end
     end
 })
 
@@ -6894,6 +7217,15 @@ task.spawn(function()
                     end
                 end
                 scanNPCContainer(Workspace, 2)
+                -- 0.27: НПС/животные по тегам игры — могут лежать вне папок
+                for _, npcTag in ipairs({ "FustNpc", "FustAnimal", "FustDino" }) do
+                    local okTags, tagged = pcall(CollectionService.GetTagged, CollectionService, npcTag)
+                    if okTags and tagged then
+                        for _, taggedModel in ipairs(tagged) do
+                            tryTrackNPC(taggedModel)
+                        end
+                    end
+                end
             end)
         end
         task.wait(1)
@@ -6908,6 +7240,42 @@ pcall(function()
             task.defer(tryTrackNPC, inst)
         end
     end)
+end)
+
+-- 0.27: диагностика категорий НПС. Раз в 10 секунд печатает в консоль
+-- каждый отслеженный НПС: имя, папку, теги игры и категорию. Если игра
+-- определила кого-то не той категорией — по этому логу легко поправить
+-- паттерны. Только чтение мира.
+task.spawn(function()
+    while getgenv().FUST_SESSION == FUST_SESSION do
+        if S.NPC.DebugLog and npcFeaturesActive() then
+            local npcCount = 0
+            for model in pairs(trackedNPCs) do
+                npcCount = npcCount + 1
+                local hum = model:FindFirstChildOfClass("Humanoid")
+                local root = model:FindFirstChild("HumanoidRootPart")
+                local catText = "?"
+                if hum and root then
+                    catText = tostring(npcGetCategory(model, hum, root))
+                end
+                local okP, parentName = pcall(function()
+                    return model.Parent and model.Parent.Name or "нет"
+                end)
+                local okT, tags = pcall(function()
+                    return table.concat(CollectionService:GetTags(model), ",")
+                end)
+                print(string.format(
+                    "[FUST][НПС] %s | папка: %s | теги: %s | категория: %s",
+                    tostring(model.Name),
+                    okP and tostring(parentName) or "?",
+                    (okT and tags and tags ~= "" and tags or "-"),
+                    catText
+                ))
+            end
+            print("[FUST][НПС] всего отслежено: " .. tostring(npcCount))
+        end
+        task.wait(10)
+    end
 end)
 
 -- 0.26: АВТО-ПРЕДИКТ. Упреждение считается от дистанции (пуля летит
@@ -7165,6 +7533,12 @@ local function saveConfig()
                 MaxDistance = S.ESP.MaxDistance,
             },
             BoxColor = colorToTable(S.ESPColors.Box),
+            NPCColors = {
+                Guard = colorToTable(NPC_CAT_COLORS.Guard),
+                Peaceful = colorToTable(NPC_CAT_COLORS.Peaceful),
+                Animal = colorToTable(NPC_CAT_COLORS.Animal),
+                Sleeper = colorToTable(NPC_CAT_COLORS.Sleeper),
+            },
             Hitbox = {
                 Enabled = S.Hitbox.Enabled,
                 Size = S.Hitbox.Size,
@@ -7183,6 +7557,10 @@ local function saveConfig()
             },
             NPC = {
                 ESP = S.NPC.ESP,
+                CatGuards = S.NPC.CatGuards,
+                CatPeaceful = S.NPC.CatPeaceful,
+                CatAnimals = S.NPC.CatAnimals,
+                CatSleepers = S.NPC.CatSleepers,
                 Box = S.NPC.Box,
                 Name = S.NPC.Name,
                 Item = S.NPC.Item,
@@ -7271,6 +7649,10 @@ local function loadConfig()
 
         if type(cfg.NPC) == "table" then
             applyFlag("NPCEsp", cfg.NPC.ESP)
+            applyFlag("NPCGuards", cfg.NPC.CatGuards)
+            applyFlag("NPCPeaceful", cfg.NPC.CatPeaceful)
+            applyFlag("NPCAnimals", cfg.NPC.CatAnimals)
+            applyFlag("NPCSleepers", cfg.NPC.CatSleepers)
             applyFlag("NPCBox", cfg.NPC.Box)
             applyFlag("NPCName", cfg.NPC.Name)
             applyFlag("NPCItem", cfg.NPC.Item)
@@ -7282,6 +7664,22 @@ local function loadConfig()
             applyFlag("NPCHitboxEnabled", cfg.NPC.HitboxEnabled)
             applyFlag("NPCHitboxSize", cfg.NPC.HitboxSize)
             applyFlag("NPCHitboxTransparency", cfg.NPC.HitboxTransparency)
+        end
+
+        -- 0.27: восстановление цветов категорий НПС
+        if type(cfg.NPCColors) == "table" then
+            for _, catName in ipairs({ "Guard", "Peaceful", "Animal", "Sleeper" }) do
+                local catColor = tableToColor(cfg.NPCColors[catName])
+                if catColor and NPC_CAT_COLORS[catName] then
+                    NPC_CAT_COLORS[catName] = catColor
+                    local catPicker = UIRegistry["NPCColor" .. catName]
+                    if catPicker and catPicker.Set then
+                        pcall(function()
+                            catPicker:Set(catColor)
+                        end)
+                    end
+                end
+            end
         end
 
         local boxColor = tableToColor(cfg.BoxColor)
@@ -7453,10 +7851,10 @@ local hitboxOriginals = {}  -- player -> оригинальные парамет
 local ChamsCreateBlocked = false  -- V11: если игра блокирует Highlight — не спамим созданием
 
 -- 0.26: отрисовка для ботов и НПС — та же Drawing-система, отдельный
--- реестр (ключ — модель, не игрок) и ОРАНЖЕВЫЙ цвет выделения
+-- реестр (ключ — модель, не игрок). 0.27: цвет — по категории НПС
+-- (NPC_COLOR и NPC_CAT_COLORS объявлены выше, в классификаторе 0.27)
 local botEspDrawings = {}
 local npcHitboxOriginals = {}
-local NPC_COLOR = Color3.fromRGB(255, 145, 0)
 
 local function botEnsureDrawings(model)
     local ed = botEspDrawings[model]
@@ -8112,6 +8510,10 @@ local function botCleanupModel(model)
         hideEspDrawings(ed)
     end
 
+    -- 0.27: сбрасываем кэш категории и таймер лежачей позы
+    npcCategoryCache[model] = nil
+    npcHorizontalSince[model] = nil
+
     local hl = model:FindFirstChild("PETUH_BotChams")
     if hl then
         pcall(function()
@@ -8549,7 +8951,8 @@ renderConnection = RunService.RenderStepped:Connect(function()
     end
 
     -- ============ 0.26: БОТЫ И НПС — ESP / ЧАМСЫ / ХИТБОКСЫ ============
-    -- Тот же подход, что у игроков, но ключ — модель, цвет — оранжевый.
+    -- 0.27: ключ — модель, цвет — по категории (охранники / мирные /
+    -- животные / слиперы), ESP категорий не пересекаются.
     -- Хитбоксы НПС — отдельная функция, хитбоксы игроков не трогает.
     local npcActive = S.NPC.ESP or S.NPC.Chams or S.NPC.HitboxEnabled
         or (Aim.Enabled and Aim.TargetsNPC)
@@ -8609,9 +9012,13 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         end)
                     end
 
-                    ---------------- Чамсы НПС (оранжевые, до потолка) ----------------
+                    -- 0.27: категория модели — ровно одна (охранник / мирный /
+                    -- животное / слипер); ESP и чамсы красятся её цветом
+                    local _, catEnabled, catColor = npcGetCategory(model, hum, root)
+
+                    ---------------- Чамсы НПС (цвет категории, до потолка) ----------------
                     local botChams = model:FindFirstChild("PETUH_BotChams")
-                    if S.NPC.Chams then
+                    if S.NPC.Chams and catEnabled then
                         if not botChams and not ChamsCreateBlocked then
                             local okH, created = pcall(function()
                                 local h = Instance.new("Highlight")
@@ -8630,8 +9037,8 @@ renderConnection = RunService.RenderStepped:Connect(function()
 
                         if botChams then
                             pcall(function()
-                                botChams.FillColor = NPC_COLOR
-                                botChams.OutlineColor = NPC_COLOR
+                                botChams.FillColor = catColor
+                                botChams.OutlineColor = catColor
                                 botChams.FillTransparency = math.clamp(S.NPC.ChamsTransparency, 0, 1)
                                 botChams.OutlineTransparency = math.clamp(S.NPC.ChamsTransparency * 0.5, 0, 1)
                                 botChams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -8644,8 +9051,8 @@ renderConnection = RunService.RenderStepped:Connect(function()
                         end)
                     end
 
-                    ---------------- ESP НПС (оранжевый) ----------------
-                    if S.NPC.ESP and hum.Health > 0 and myRoot then
+                    ---------------- ESP НПС (цвет категории) ----------------
+                    if S.NPC.ESP and catEnabled and hum.Health > 0 and myRoot then
                         local dist = (root.Position - myRoot.Position).Magnitude
                         if dist <= S.NPC.MaxDistance * 1.06 + 10 then
                             local topLeft, boxSize = getScreenBox(Camera, root)
@@ -8673,7 +9080,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                                 if S.NPC.Box then
                                     ed.Box.Position = Vector2.new(bx, by)
                                     ed.Box.Size = Vector2.new(bw, bh)
-                                    ed.Box.Color = NPC_COLOR
+                                    ed.Box.Color = catColor
                                     ed.Box.Visible = true
                                 else
                                     ed.Box.Visible = false
@@ -8682,7 +9089,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                                 if S.NPC.Name then
                                     ed.Name.Text = model.Name
                                     ed.Name.Position = Vector2.new(centerX, by - 18)
-                                    ed.Name.Color = NPC_COLOR
+                                    ed.Name.Color = catColor
                                     ed.Name.Visible = true
                                 else
                                     ed.Name.Visible = false
@@ -8691,7 +9098,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                                 if S.NPC.Distance then
                                     ed.Distance.Text = math.floor(dist + 0.5) .. "m"
                                     ed.Distance.Position = Vector2.new(centerX, by + bh + 4)
-                                    ed.Distance.Color = NPC_COLOR
+                                    ed.Distance.Color = catColor
                                     ed.Distance.Visible = true
                                 else
                                     ed.Distance.Visible = false
@@ -8705,7 +9112,7 @@ renderConnection = RunService.RenderStepped:Connect(function()
                                         local itemY = by + bh + (S.NPC.Distance and 23 or 4)
                                         ed.Item.Text = tool.Name
                                         ed.Item.Position = Vector2.new(centerX, itemY)
-                                        ed.Item.Color = NPC_COLOR
+                                        ed.Item.Color = catColor
                                         ed.Item.Visible = true
                                     else
                                         ed.Item.Visible = false
